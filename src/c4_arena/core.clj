@@ -18,7 +18,7 @@
 ;;; Websocket connection for the game protocol
 (defn game-handler [req]
   (let [s @(http/websocket-connection req)]
-    (s/connect s s))))
+    (s/connect s s)))
 
 (defn -main [& args]
   (http/start-server handler {:port 8001})
