@@ -7,7 +7,8 @@
                  [org.clojure/core.async "0.2.371"]
                  [com.taoensso/timbre "4.1.4"]
                  [compojure "1.4.0"]
-                 [aleph "0.4.0"]
+                 [aleph "0.3.3"]
+                 [manifold "0.1.0"]
                  [cheshire "5.5.0"]]
   :plugins [[cider/cider-nrepl "0.9.1"]]
   :main ^:skip-aot c4-arena.core
