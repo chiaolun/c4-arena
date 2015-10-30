@@ -13,31 +13,64 @@
     :refer [defroutes GET]]
    [cheshire.core :refer [parse-string generate-string]]))
 
+(def ncols 7)
+(def nrows 6)
+(def n-to-win 4)
+
 (defonce matcher (atom nil))
 ;;; All the ids waiting for a match
 (defonce awaiting (atom nil))
 
 (defonce match-count (atom {}))
 
+(defn get-winner [state-val i]
+  (let [cand (state-val i)
+        dirs [1 nrows (inc nrows)]]
+    (when (first
+           (for [dir dirs]
+             (<= (inc n-to-win)
+                 (+
+                  (count
+                   (for [j (reductions + (repeat (- dir)))
+                         :while (= cand (state-val j))]
+                     true))
+                  (count
+                   (for [j (reductions + (repeat (+ dir)))
+                         :while (= cand (state-val j))]
+                     true))))))
+      cand)))
+
 (defn process-move [state winner turn move]
-  true)
+  ;; This function implements the rules of connect-4. If a move is not
+  ;; valid, returns false. If a move is valid, it makes the move and
+  ;; then determines if there has been a winner. If there has been a
+  ;; winner, it marks the winner. Flips turn and returns true at this point
+  (when-let [i (and
+                (< 0 move ncols)
+                (->> (range (* move nrows) (* (inc move) nrows))
+                     (filter (fn [i] (= (@state i) 0)))
+                     first))]
+    (swap! state assoc i (inc @turn))
+    (swap! turn #(- 1 %))
+    (reset! winner (get-winner @state i))
+    true))
 
 (defn game-loop [players]
   (let [ch-ins (vec (map (comp first :chs) players))
         ch-outs (vec (map (comp second :chs) players))
-        state (atom (repeat (* 7 6) 0))
+        state (atom (vec (repeat (* ncols nrows) 0)))
         turn (atom 0)
         winner (atom nil)
         notify (fn [ch]
                  (go (>! ch
                          (cond->
                              {:type :state
-                              :turn (inc @turn)
-                              :you (inc @turn)
+                              :turn (inc (or @turn -1))
+                              :you (inc (.indexOf ch-outs ch))
                               :state @state}
                            @winner
                            (assoc
-                            :winner @winner
+                            :winner (inc @winner)
                             :turn 0)))))]
     (go
       ;; During the game
