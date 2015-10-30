@@ -189,4 +189,5 @@
    :port 4222
    :handler cider-nrepl-handler)
   (matcher-init)
-  (http/start-server #'app {:port 8001}))
+  (http/start-server #'app {:port 8001})
+  (tb/info "Server is up!"))
