@@ -31,14 +31,16 @@
              (<= (dec n-to-win)
                  (+
                   (count
-                   (for [j (reductions + (repeat (- dir)))
-                         :while (and (<= 0 j (dec ncols))
-                                     (= cand (state-val j)))]
+                   (for [j (reductions + (repeat dir))
+                         :let [k (- i j)]
+                         :while (and (<= 0 k (dec (* ncols nrows)))
+                                     (= cand (state-val k)))]
                      true))
                   (count
-                   (for [j (reductions + (repeat (+ dir)))
-                         :while (and (<= 0 j (dec ncols))
-                                     (= cand (state-val j)))]
+                   (for [j (reductions + (repeat dir))
+                         :let [k (+ i j)]
+                         :while (and (<= 0 k (dec (* ncols nrows)))
+                                     (= cand (state-val k)))]
                      true))))))
       (dec cand))))
 
@@ -88,7 +90,8 @@
                 (and (= type "move")
                      (= @turn actor)
                      (process-move state winner turn move))
-                (notify (ch-outs @turn))
+                (doseq [ch-out ch-outs]
+                  (notify ch-out))
                 :else (put! ch-out {:type :ignored :msg msg})))
             (when-not @winner
               (recur)))))
