@@ -2,7 +2,7 @@
   (:gen-class)
   (:require
    [clojure.core
-    [async :as async :refer [go go-loop <! >! chan put! alts!]]]
+    [async :as async :refer [go go-loop <! >! chan put! alt! alts!]]]
    [taoensso.timbre :as tb]
    [manifold
     [stream :as st]
@@ -58,43 +58,44 @@
     true))
 
 (defn game-loop [players]
-  (let [ch-ins (vec (map (comp first :chs) players))
-        ch-outs (vec (map (comp second :chs) players))
+  (let [ch-ins (vec (map :ch-in players))
+        ch-outs (vec (map :ch-out players))
         state (atom (vec (repeat (* ncols nrows) 0)))
         turn (atom 0)
         winner (atom nil)
         notify (fn [ch]
-                 (go (>! ch
-                         (cond->
-                             {:type :state
-                              :turn (inc (or @turn -1))
-                              :you (inc (.indexOf ch-outs ch))
-                              :state @state}
-                           @winner
-                           (assoc
-                            :winner (inc @winner)
-                            :turn 0)))))]
+                 (put!
+                  ch (cond->
+                         {:type :state
+                          :turn (inc (or @turn -1))
+                          :you (inc (.indexOf ch-outs ch))
+                          :state @state}
+                       @winner
+                       (assoc
+                        :winner (inc @winner)
+                        :turn 0))))]
     (go
+      (doseq [ch-out (vals ch-outs)]
+        (notify ch-out))
       ;; During the game
       (loop []
-        (<! (notify (ch-outs @turn)))
         (when-let [[{:keys [type move] :as msg} ch-in] (alts! ch-ins)]
           (when msg
             (let [actor (.indexOf ch-ins ch-in)
                   ch-out (ch-outs actor)]
               (cond
                 (= type "state_request")
-                (<! (notify ch-out))
+                (notify ch-out)
                 (and (= type "move")
                      (= @turn actor)
                      (process-move state winner turn move))
-                :next-turn
-                :else (>! ch-out {:type :ignored :msg msg})))
+                (notify (ch-outs @turn))
+                :else (put! ch-out {:type :ignored :msg msg})))
             (when-not @winner
               (recur)))))
       ;; Cleanup
-      (doseq [{:keys [latch] [_ ch-out] :chs} players]
-        (<! (notify ch-out))
+      (doseq [{:keys [latch ch-out]} players]
+        (notify ch-out)
         (>! ch-out {:type (if @winner "end" "disconnected")})
         (async/close! latch)))))
 
@@ -110,8 +111,18 @@
                         first)]
     (do (swap! awaiting (partial remove #{player1}))
         (swap! match-count update-in [#{(:id player0) (:id player1)}] (fnil inc 0))
+        (async/close! (:waiter player1))
         (game-loop [player0 player1]))
-    (swap! awaiting conj player0)))
+    (let [waiter (chan)]
+      (go-loop []
+        (alt!
+          waiter :done
+          (:ch-in player0)
+          ([msg]
+           (put! (:ch-out player0)
+                 {:type :ignored :msg msg :reason "waiting for match"})
+           (recur))))
+      (swap! awaiting conj (assoc player0 :waiter waiter)))))
 
 (defn matcher-init []
   (let [ch (chan)]
@@ -124,13 +135,13 @@
     (reset! matcher ch)))
 
 ;;; Game handler
-(defn game-handler [[ch-in ch-out :as chs]]
+(defn game-handler [[ch-in ch-out]]
   (go-loop []
     (when-let [msg (<! ch-in)]
       (let [{:keys [type id]} msg]
         (if (and (= type "start") id)
           (let [latch (chan)]
-            (>! @matcher {:id id :chs chs :latch latch})
+            (>! @matcher {:id id :ch-in ch-in :ch-out ch-out :latch latch})
             ;; Waits here until game ends
             (<! latch))
           (>! ch-out {:type "ignored" :msg msg}))
