@@ -5,8 +5,8 @@
     [async :as async :refer [go go-loop <! >! chan put! alts!]]]
    [taoensso.timbre :as tb]
    [manifold
-    [deferred :as df]
-    [stream :as st]]
+    [stream :as st]
+    [deferred :as d]]
    [aleph
     [http :as http]]
    [compojure.core
@@ -138,27 +138,23 @@
                 (recur)))))))
 
 ;;; Game loop
-(defn game-init [ch]
+(defn game-init [s]
   (let [ch-in (chan)
         ch-out (chan)]
     ;; Incoming messages
-    (st/connect (st/map #(parse-string % true) ch) ch-in)
+    (st/connect (st/map #(parse-string % true) s) ch-in)
     ;; Outgoing messages
-    (st/connect (st/map generate-string ch-out) ch)
+    (st/connect (st/map generate-string ch-out) s)
     ;; Event loop for the connection
     (go
       ;; Keep waiting to start new games if channels are still alive
       (<! (game-handler [ch-in ch-out]))
-      (st/close! ch))
-    (st/on-closed
-     ch (fn []
-          (async/close! ch-in)
-          (async/close! ch-out)))))
+      (st/close! s))))
 
 ;;; Websocket connection for the game protocol
-(defn game-handler [raw-ch req]
-  (let [ch (st/splice raw-ch raw-ch)]
-    (game-init ch)))
+(defn game-handler [req]
+  (let [s @(http/websocket-connection req)]
+    (game-init s)))
 
 ;; ;;; Websocket connection for the firehose, carrying all state updates
 ;; ;;; for the whole server
@@ -169,9 +165,8 @@
 
 (defroutes app
   ;; (GET "/firehose" [] #'firehose-handler)
-  (GET "/" [] (-> #'game-handler
-                  http/wrap-aleph-handler)))
+  (GET "/" [] #'game-handler))
 
 (defn -main [& args]
   (matcher-init)
-  (http/start-server #'app {:port 8001 :websocket true}))
+  (http/start-server #'app {:port 8001}))
