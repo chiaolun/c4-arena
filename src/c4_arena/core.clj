@@ -137,8 +137,7 @@
 ;;; Game loop
 (defn game-init [s]
   (let [ch-in (chan)
-        ch-out (chan)
-        chs [ch-in ch-out]]
+        ch-out (chan)]
     ;; Incoming messages
     (st/connect (st/map #(parse-string % true) s) ch-in)
     ;; Outgoing messages
@@ -146,7 +145,7 @@
     ;; Event loop for the connection
     (go
       ;; Keep waiting to start new games if channels are still alive
-      (<! (game-handler chs))
+      (<! (game-handler [ch-in ch-out]))
       (st/close! s))))
 
 ;;; Websocket connection for the game protocol
