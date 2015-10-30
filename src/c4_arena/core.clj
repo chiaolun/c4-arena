@@ -29,8 +29,7 @@
   (go-loop []
     (when-let [msg (<! ch-in)]
       (let [{:keys [type id]} msg]
-        (cond
-          (and (= type "start") id)
+        (if (and (= type "start") id)
           (let [latch (chan)]
             (>! @matcher {:id id :chs chs :latch latch})
             ;; Waits here until game ends
