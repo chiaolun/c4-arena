@@ -109,6 +109,11 @@ To client2:
 }
 ```
 
+* If the other player terminates their connection, server will send
+```
+{:type "disconnected"}
+```
+
 * Any invalid messages result in a reply
 ```
 {:type "ignored", :msg <copy of msg>}
