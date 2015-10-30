@@ -36,9 +36,11 @@ while 1:
         print "Your side:", you
         print "Board:"
         print_board(state["state"])
-        if state["winner"]:
+        if state.get("winner", False):
             print state["winner"], "has won"
         elif state["turn"] == you:
             print "It's your turn, pick a column"
             col = int(raw_input())
             ws.send(json.dumps({"type" : "move",  "move" : col}))
+        else:
+            print "Waiting for other player to play"
