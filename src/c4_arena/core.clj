@@ -25,6 +25,8 @@
 
 (defonce match-count (atom {}))
 
+(defonce uid-counter (atom 0))
+
 (defn get-winner [state-val i]
   (let [cand (state-val i)
         dirs [1 nrows (dec nrows) (inc nrows)]]
@@ -105,7 +107,7 @@
         (async/close! latch)))))
 
 (defn match-once [{:keys [id] :as player0}]
-  (if-let [player1 (->> @awaiting
+  (if-let [player1 (->> (vals @awaiting)
                         (remove
                          (fn [{other-id :id}]
                            (= id other-id)))
@@ -114,7 +116,7 @@
                          (fn [{other-id :id}]
                            (@match-count #{id other-id})))
                         first)]
-    (do (swap! awaiting (partial remove #{player1}))
+    (do (swap! awaiting dissoc (:uid player1))
         (async/close! (:waiter player1))
         (swap! match-count update-in [#{(:id player0) (:id player1)}] (fnil inc 0))
         (game-loop [player0 player1]))
@@ -124,11 +126,12 @@
           waiter :done
           (:ch-in player0)
           ([msg]
-           (when msg
-             (put! (:ch-out player0)
-                   {:type :ignored :msg msg :reason "waiting for match"})
-             (recur)))))
-      (swap! awaiting conj (assoc player0 :waiter waiter)))))
+           (if-not msg
+             (swap! awaiting dissoc (:uid player0))
+             (do (put! (:ch-out player0)
+                       {:type :ignored :msg msg :reason "waiting for match"})
+                 (recur))))))
+      (swap! awaiting assoc (:uid player0) (assoc player0 :waiter waiter)))))
 
 (defn matcher-init []
   (let [ch (chan)]
@@ -140,32 +143,27 @@
       (async/close! prev-ch))
     (reset! matcher ch)))
 
-;;; Game handler
-(defn game-handler [[ch-in ch-out]]
-  (go-loop []
-    (when-let [msg (<! ch-in)]
-      (let [{:keys [type id]} msg]
-        (if (and (= type "start") id)
-          (let [latch (chan)]
-            (>! @matcher {:id id :ch-in ch-in :ch-out ch-out :latch latch})
-            ;; Waits here until game ends
-            (<! latch))
-          (put! ch-out {:type "ignored" :msg msg}))
-        (recur)))))
-
 ;;; Game loop
 (defn game-init [s]
   (let [ch-in (chan)
-        ch-out (chan)]
+        ch-out (chan)
+        uid (swap! uid-counter inc)]
     ;; Incoming messages
     (st/connect (st/map #(parse-string % true) s) ch-in)
     ;; Outgoing messages
     (st/connect (st/map generate-string ch-out) s)
     ;; Event loop for the connection
-    (go
-      ;; Keep waiting to start new games if channels are still alive
-      (<! (game-handler [ch-in ch-out]))
-      (st/close! s))
+    (go-loop []
+      (when-let [msg (<! ch-in)]
+        (let [{:keys [type id]} msg]
+          (if (and (= type "start") id)
+            (let [latch (chan)]
+              (>! @matcher {:uid uid :id id :ch-in ch-in :ch-out ch-out :latch latch})
+              ;; Waits here until game ends
+              (<! latch))
+            (put! ch-out {:type "ignored" :msg msg}))
+          (recur))))
+    (st/on-drained s (fn [] (swap! awaiting dissoc uid)))
     {:status 200 :body "success!"}))
 
 ;;; Websocket connection for the game protocol
