@@ -33,7 +33,7 @@ To client1:
 
 From client1:
 ```
-{:type "move_reply", :move 0}
+{:type "move", :move 0}
 ```
 
 State representation is column-major
@@ -41,7 +41,7 @@ State representation is column-major
 To client2:
 ```
 {
-:type "move_request",
+:type "state",
 :turn 2 :you 2
 :state [1,0,0,0,0,0,
         0,0,0,0,0,0,
@@ -57,13 +57,13 @@ The move you make is a column number
 
 From client2:
 ```
-{:type "move_reply", :move 2}
+{:type "move", :move 2}
 ```
 
 To client1:
 ```
 {
-:type "move_request",
+:type "state",
 :turn 1 :you 1
 :state [1,0,0,0,0,0,
         0,0,0,0,0,0,
