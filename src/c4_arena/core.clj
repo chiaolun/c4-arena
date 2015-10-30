@@ -25,7 +25,7 @@
 
 (defn get-winner [state-val i]
   (let [cand (state-val i)
-        dirs [1 nrows (inc nrows)]]
+        dirs [1 nrows (dec nrows) (inc nrows)]]
     (when (first
            (for [dir dirs]
              (<= (dec n-to-win)
