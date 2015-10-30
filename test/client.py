@@ -31,6 +31,8 @@ while 1:
     if state["type"] == "end":
         print "Game has ended"
         break
+    elif state["type"] == "ignored":
+        print "Invalid input, try again"
     elif state["type"] == "state":
         you = state["you"]
         print "Your side:", you
