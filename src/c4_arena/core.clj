@@ -142,14 +142,18 @@
   (let [ch-in (chan)
         ch-out (chan)]
     ;; Incoming messages
-    (st/connect (st/map #(parse-string % true) s) ch-in)
+    (st/consume (fn [msg] (put! ch-in (parse-string msg))) s)
     ;; Outgoing messages
-    (st/connect (st/map generate-string ch-out) s)
+    (go-loop []
+      (when-let [msg (<! ch-out)]
+        (st/put! s (generate-string msg))))
     ;; Event loop for the connection
     (go
       ;; Keep waiting to start new games if channels are still alive
       (<! (game-handler [ch-in ch-out]))
-      (st/close! s))))
+      (st/close! s))
+    ;; Cleanup
+    (st/on-drained s (fn [] (async/close! ch-in) (async/close! ch-out)))))
 
 ;;; Websocket connection for the game protocol
 (defn game-handler [req]
@@ -169,4 +173,4 @@
 
 (defn -main [& args]
   (matcher-init)
-  (http/start-server #'game-handler {:port 8001}))
+  (http/start-server #'app {:port 8001}))
