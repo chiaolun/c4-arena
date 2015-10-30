@@ -6,7 +6,7 @@
    [taoensso.timbre :as tb]
    [manifold
     [stream :as st]
-    [deferred :as d]]
+    [deferred :as df]]
    [aleph
     [http :as http]]
    [compojure.core
@@ -28,15 +28,17 @@
         dirs [1 nrows (inc nrows)]]
     (when (first
            (for [dir dirs]
-             (<= (inc n-to-win)
+             (<= (dec n-to-win)
                  (+
                   (count
                    (for [j (reductions + (repeat (- dir)))
-                         :while (= cand (state-val j))]
+                         :while (and (<= 0 j (dec ncols))
+                                     (= cand (state-val j)))]
                      true))
                   (count
                    (for [j (reductions + (repeat (+ dir)))
-                         :while (= cand (state-val j))]
+                         :while (and (<= 0 j (dec ncols))
+                                     (= cand (state-val j)))]
                      true))))))
       cand)))
 
@@ -46,7 +48,7 @@
   ;; then determines if there has been a winner. If there has been a
   ;; winner, it marks the winner. Flips turn and returns true at this point
   (when-let [i (and
-                (< 0 move ncols)
+                (<= 0 move (dec ncols))
                 (->> (range (* move nrows) (* (inc move) nrows))
                      (filter (fn [i] (= (@state i) 0)))
                      first))]
@@ -91,7 +93,7 @@
             (when-not @winner
               (recur)))))
       ;; Cleanup
-      (doseq [{:keys [latch ch-out]} players]
+      (doseq [{:keys [latch] [_ ch-out] :chs} players]
         (<! (notify ch-out))
         (>! ch-out {:type (if @winner "end" "disconnected")})
         (async/close! latch)))))
@@ -131,8 +133,8 @@
             (>! @matcher {:id id :chs chs :latch latch})
             ;; Waits here until game ends
             (<! latch))
-          (do (>! ch-out {:type "ignored" :msg msg})
-              (recur)))))))
+          (>! ch-out {:type "ignored" :msg msg}))
+        (recur)))))
 
 ;;; Game loop
 (defn game-init [s]
@@ -146,7 +148,8 @@
     (go
       ;; Keep waiting to start new games if channels are still alive
       (<! (game-handler [ch-in ch-out]))
-      (st/close! s))))
+      (st/close! s))
+    {:status 200 :body "success!"}))
 
 ;;; Websocket connection for the game protocol
 (defn game-websocket [req]
