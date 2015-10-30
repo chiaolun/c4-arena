@@ -169,4 +169,4 @@
 
 (defn -main [& args]
   (matcher-init)
-  (http/start-server #'game-handler {:port 8001}))
+  (http/start-server #'app {:port 8001}))
