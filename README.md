@@ -124,6 +124,7 @@ From client1:
 ```
 
 To client1:
+```
 {
 :type "state"
 :turn 1
@@ -136,7 +137,7 @@ To client1:
         0,0,0,0,0,0,
         0,0,0,0,0,0]
 }
-
+```
 
 ## License
 
