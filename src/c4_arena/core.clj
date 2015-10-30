@@ -40,7 +40,7 @@
                          :while (and (<= 0 j (dec ncols))
                                      (= cand (state-val j)))]
                      true))))))
-      cand)))
+      (dec cand))))
 
 (defn process-move [state winner turn move]
   ;; This function implements the rules of connect-4. If a move is not
