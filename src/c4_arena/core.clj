@@ -26,8 +26,8 @@
 (defn get-winner [state-val i]
   (let [cand (state-val i)
         dirs [1 nrows (dec nrows) (inc nrows)]]
-    (when (first
-           (for [dir dirs]
+    (when (some
+           (fn [dir]
              (<= (dec n-to-win)
                  (+
                   (count
@@ -41,7 +41,8 @@
                          :let [k (+ i j)]
                          :while (and (<= 0 k (dec (* ncols nrows)))
                                      (= cand (state-val k)))]
-                     true))))))
+                     true)))))
+           dirs)
       (dec cand))))
 
 (defn process-move [state winner turn move]
