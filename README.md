@@ -75,12 +75,12 @@ To client1:
 }
 ```
 
-And so on. When a winner appears, the server sends:
+And so on. When a winner appears, the server sends a state update:
 
 To client1:
 ```
 {
-:type "end",
+:type "state",
 :winner 1
 :turn 0 :you 1
 :state [1,0,0,0,0,0,
@@ -96,7 +96,7 @@ To client1:
 To client2:
 ```
 {
-:type "end",
+:type "state",
 :winner 1
 :turn 0 :you 2
 :state [1,0,0,0,0,0,
@@ -108,6 +108,10 @@ To client2:
         0,0,0,0,0,0]
 }
 ```
+
+and then sends
+
+{:type "end"}
 
 * If the other player terminates their connection, server will send
 ```
