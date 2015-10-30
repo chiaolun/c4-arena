@@ -58,8 +58,8 @@
     true))
 
 (defn game-loop [players]
-  (let [ch-ins (vec (map :ch-in players))
-        ch-outs (vec (map :ch-out players))
+  (let [ch-ins (mapv :ch-in players)
+        ch-outs (mapv :ch-out players)
         state (atom (vec (repeat (* ncols nrows) 0)))
         turn (atom 0)
         winner (atom nil)
