@@ -101,7 +101,7 @@
       ;; Cleanup
       (doseq [{:keys [latch ch-out]} players]
         (notify ch-out)
-        (>! ch-out {:type (if @winner "end" "disconnected")})
+        (put! ch-out {:type (if @winner "end" "disconnected")})
         (async/close! latch)))))
 
 (defn match-once [{:keys [id] :as player0}]
@@ -150,7 +150,7 @@
             (>! @matcher {:id id :ch-in ch-in :ch-out ch-out :latch latch})
             ;; Waits here until game ends
             (<! latch))
-          (>! ch-out {:type "ignored" :msg msg}))
+          (put! ch-out {:type "ignored" :msg msg}))
         (recur)))))
 
 ;;; Game loop
