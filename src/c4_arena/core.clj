@@ -125,14 +125,17 @@
 (defn game-handler [[ch-in ch-out :as chs]]
   (go-loop []
     (when-let [msg (<! ch-in)]
-      (let [{:keys [type id]} msg]
-        (if (and (= type "start") id)
-          (let [latch (chan)]
-            (>! @matcher {:id id :chs chs :latch latch})
-            ;; Waits here until game ends
-            (<! latch))
-          (do (>! ch-out {:type "ignored" :msg msg})
-              (recur)))))))
+      (>! ch-out msg)
+      (recur))
+    #_(when-let [msg (<! ch-in)]
+        (let [{:keys [type id]} msg]
+          (if (and (= type "start") id)
+            (let [latch (chan)]
+              (>! @matcher {:id id :chs chs :latch latch})
+              ;; Waits here until game ends
+              (<! latch))
+            (do (>! ch-out {:type "ignored" :msg msg})
+                (recur)))))))
 
 ;;; Game loop
 (defn game-init [s]
