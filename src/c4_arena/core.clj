@@ -125,17 +125,14 @@
 (defn game-handler [[ch-in ch-out :as chs]]
   (go-loop []
     (when-let [msg (<! ch-in)]
-      (>! ch-out msg)
-      (recur))
-    #_(when-let [msg (<! ch-in)]
-        (let [{:keys [type id]} msg]
-          (if (and (= type "start") id)
-            (let [latch (chan)]
-              (>! @matcher {:id id :chs chs :latch latch})
-              ;; Waits here until game ends
-              (<! latch))
-            (do (>! ch-out {:type "ignored" :msg msg})
-                (recur)))))))
+      (let [{:keys [type id]} msg]
+        (if (and (= type "start") id)
+          (let [latch (chan)]
+            (>! @matcher {:id id :chs chs :latch latch})
+            ;; Waits here until game ends
+            (<! latch))
+          (do (>! ch-out {:type "ignored" :msg msg})
+              (recur)))))))
 
 ;;; Game loop
 (defn game-init [s]
@@ -152,7 +149,7 @@
       (st/close! s))))
 
 ;;; Websocket connection for the game protocol
-(defn game-handler [req]
+(defn game-websocket [req]
   (let [s @(http/websocket-connection req)]
     (game-init s)))
 
@@ -165,7 +162,7 @@
 
 (defroutes app
   ;; (GET "/firehose" [] #'firehose-handler)
-  (GET "/" [] #'game-handler))
+  (GET "/" [] #'game-websocket))
 
 (defn -main [& args]
   (matcher-init)
