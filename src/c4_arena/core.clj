@@ -64,16 +64,15 @@
         turn (atom 0)
         winner (atom nil)
         notify (fn [ch]
-                 (put!
-                  ch (cond->
-                         {:type :state
-                          :turn (inc (or @turn -1))
-                          :you (inc (.indexOf ch-outs ch))
-                          :state @state}
-                       @winner
-                       (assoc
-                        :winner (inc @winner)
-                        :turn 0))))]
+                 (put! ch (cond->
+                              {:type :state
+                               :turn (inc (or @turn -1))
+                               :you (inc (.indexOf ch-outs ch))
+                               :state @state}
+                            @winner
+                            (assoc
+                             :winner (inc @winner)
+                             :turn 0))))]
     (go
       (doseq [ch-out (vals ch-outs)]
         (notify ch-out))
