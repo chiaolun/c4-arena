@@ -109,8 +109,8 @@
                            (@match-count #{id other-id})))
                         first)]
     (do (swap! awaiting (partial remove #{player1}))
-        (swap! match-count update-in [#{(:id player0) (:id player1)}] (fnil inc 0))
         (async/close! (:waiter player1))
+        (swap! match-count update-in [#{(:id player0) (:id player1)}] (fnil inc 0))
         (game-loop [player0 player1]))
     (let [waiter (chan)]
       (go-loop []
