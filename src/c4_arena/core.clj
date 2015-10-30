@@ -119,9 +119,10 @@
           waiter :done
           (:ch-in player0)
           ([msg]
-           (put! (:ch-out player0)
-                 {:type :ignored :msg msg :reason "waiting for match"})
-           (recur))))
+           (when msg
+             (put! (:ch-out player0)
+                   {:type :ignored :msg msg :reason "waiting for match"})
+             (recur)))))
       (swap! awaiting conj (assoc player0 :waiter waiter)))))
 
 (defn matcher-init []
