@@ -74,7 +74,7 @@
                              :winner (inc @winner)
                              :turn 0))))]
     (go
-      (doseq [ch-out (vals ch-outs)]
+      (doseq [ch-out ch-outs]
         (notify ch-out))
       ;; During the game
       (loop []
