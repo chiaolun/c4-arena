@@ -8,7 +8,9 @@
                  [com.taoensso/timbre "4.1.4"]
                  [compojure "1.4.0"]
                  [aleph "0.4.0"]
-                 [cheshire "5.5.0"]]
+                 [cheshire "5.5.0"]
+                 [org.clojure/tools.nrepl "0.2.11"]
+                 [cider/cider-nrepl "0.9.1"]]
   :plugins [[cider/cider-nrepl "0.9.1"]]
   :main ^:skip-aot c4-arena.core
   :target-path "target/%s"

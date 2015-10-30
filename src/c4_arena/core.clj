@@ -11,6 +11,8 @@
     [http :as http]]
    [compojure.core
     :refer [defroutes GET]]
+   [clojure.tools.nrepl.server :as nrepl]
+   [cider.nrepl :refer [cider-nrepl-handler]]
    [cheshire.core :refer [parse-string generate-string]]))
 
 (def ncols 7)
@@ -183,5 +185,8 @@
   (GET "/" [] #'game-websocket))
 
 (defn -main [& args]
+  (nrepl/start-server
+   :port 4222
+   :handler cider-nrepl-handler)
   (matcher-init)
   (http/start-server #'app {:port 8001}))
