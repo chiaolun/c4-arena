@@ -6,6 +6,7 @@
    [clojure
     [string :as string]]
    [taoensso.timbre :as tb]
+   [clojure.java.jdbc :as sql]
    [manifold
     [stream :as st]
     [deferred :as df]]
@@ -16,6 +17,11 @@
    [clojure.tools.nrepl.server :as nrepl]
    [cider.nrepl :refer [cider-nrepl-handler]]
    [cheshire.core :refer [parse-string generate-string]]))
+
+(def db
+  {:classname "org.sqlite.JDBC"
+   :subprotocol "sqlite"
+   :subname "db/matches.sqlite"})
 
 (def ncols 7)
 (def nrows 6)

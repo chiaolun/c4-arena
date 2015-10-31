@@ -20,4 +20,9 @@
             [migratus-lein "0.2.0"]]
   :main ^:skip-aot c4-arena.core
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all}}
+  :migratus {:store :database
+             :migration-dir "migrations"
+             :db {:classname "org.sqlite.JDBC"
+                  :subprotocol "sqlite"
+                  :subname "db/matches.sqlite"}})
