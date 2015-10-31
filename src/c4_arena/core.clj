@@ -3,6 +3,8 @@
   (:require
    [clojure.core
     [async :as async :refer [go go-loop <! >! chan put! alt! alts!]]]
+   [clojure
+    [string :as string]]
    [taoensso.timbre :as tb]
    [manifold
     [stream :as st]
@@ -56,11 +58,12 @@
     (reset! winner (get-winner @state i))
     true))
 
+(declare initial-loop)
 (defn game-loop [players]
   (let [ch-ins (mapv :ch-in players)
         ch-outs (mapv :ch-out players)
         state (atom (vec (repeat (* ncols nrows) 0)))
-        turn (atom 0)
+        turn (atom (rand-int 2))
         winner (atom nil)
         notify (fn [ch]
                  (put! ch (cond->
@@ -73,30 +76,37 @@
                              :winner (inc @winner)
                              :turn 0))))]
     (go
+      ;; Start out by notifying both sides of the board state
       (doseq [ch-out ch-outs]
         (notify ch-out))
       ;; During the game
       (loop []
         (when-let [[{:keys [type move] :as msg} ch-in] (alts! ch-ins)]
-          (when msg
-            (let [actor (.indexOf ch-ins ch-in)
-                  ch-out (ch-outs actor)]
-              (cond
-                (= type "state_request")
-                (notify ch-out)
-                (and (= type "move")
-                     (= @turn actor)
-                     (process-move state winner turn move))
-                (doseq [ch-out ch-outs]
-                  (notify ch-out))
-                :else (put! ch-out {:type :ignored :msg msg})))
-            (when-not @winner
-              (recur)))))
-      ;; Cleanup
-      (doseq [{:keys [latch ch-out]} players]
-        (notify ch-out)
-        (put! ch-out {:type (if @winner "end" "disconnected")})
-        (async/close! latch)))))
+          (let [actor (.indexOf ch-ins ch-in)
+                ch-out (ch-outs actor)]
+            (if-not msg
+              ;; Cleanup
+              (doseq [{ch-out0 :ch-out :as player0} players
+                      :when (not= ch-out ch-out0)]
+                (notify ch-out0)
+                (put! ch-out0 {:type "disconnected"})
+                (initial-loop player0))
+              (do (cond
+                    (= type "state_request")
+                    (notify ch-out)
+                    (and (= type "move")
+                         (= @turn actor)
+                         (process-move state winner turn move))
+                    (doseq [ch-out ch-outs]
+                      (notify ch-out))
+                    :else (put! ch-out {:type :ignored :msg msg}))
+                  (if-not @winner
+                    (recur)
+                    ;; Cleanup
+                    (doseq [{:keys [ch-out0] :as player0} players]
+                      (notify ch-out0)
+                      (put! ch-out0 {:type "end"})
+                      (initial-loop player0)))))))))))
 
 (defn match-once [{:keys [id] :as player0}]
   (if-let [player1 (->> (vals @awaiting)
@@ -108,54 +118,72 @@
                          (fn [{other-id :id}]
                            (@match-count #{id other-id})))
                         first)]
-    (do (swap! awaiting dissoc (:uid player1))
-        (async/close! (:waiter player1))
+    ;; Someone is available!
+    (do (async/close! (:waiter player1))
         (swap! match-count update-in [#{(:id player0) (:id player1)}] (fnil inc 0))
-        (game-loop [player0 player1]))
+        (game-loop (->> [player0 player1] (map #(dissoc % :waiter)))))
+    ;; Nobody is available
     (let [waiter (chan)]
+      (swap! awaiting assoc (:uid player0) (assoc player0 :waiter waiter))
       (go-loop []
         (alt!
-          waiter :done
+          ;; If the control channel is closed, dequeue and stop
+          ;; processing messages (note the lack of recur)
+          waiter
+          ([_]
+           (swap! awaiting dissoc (:uid player0)))
+          ;; Otherwise ignore all messages of the client
           (:ch-in player0)
           ([msg]
            (if-not msg
              (swap! awaiting dissoc (:uid player0))
              (do (put! (:ch-out player0)
                        {:type :ignored :msg msg :reason "waiting for match"})
-                 (recur))))))
-      (swap! awaiting assoc (:uid player0) (assoc player0 :waiter waiter)))))
+                 (recur)))))))))
 
 (defn matcher-init []
+  ;; This function initializes the matcher channel, which is needed
+  ;; because the data structures used by match-once are not
+  ;; thread-safe - it acts as a lock and serializes access to the
+  ;; awaiting queue
   (let [ch (chan)]
     (go-loop []
       (when-let [player (<! ch)]
-        (match-once player)
+        (try
+          (match-once player)
+          (catch Exception e
+            (tb/error e)))
         (recur)))
     (when-let [prev-ch @matcher]
       (async/close! prev-ch))
     (reset! matcher ch)))
 
+(defn initial-loop [{:keys [ch-in ch-out] :as player}]
+  (go-loop []
+    (when-let [msg (<! ch-in)]
+      (let [{:keys [type id]} msg
+            reason (cond
+                     (not= type "start")
+                     "Only start messages allowed in current state"
+                     (string/blank? id)
+                     "You need to include an id")]
+        (if-not reason
+          (>! @matcher (assoc player :id id))
+          (do (put! ch-out {:type "ignored" :msg msg :reason reason})
+              (recur)))))))
+
 ;;; Game loop
 (defn game-init [s]
   (let [ch-in (chan)
         ch-out (chan)
-        uid (swap! uid-counter inc)]
+        uid (swap! uid-counter inc)
+        player {:uid uid :ch-in ch-in :ch-out ch-out}]
     ;; Incoming messages
     (st/connect (st/map #(parse-string % true) s) ch-in)
     ;; Outgoing messages
     (st/connect (st/map generate-string ch-out) s)
-    ;; Event loop for the connection
-    (go-loop []
-      (when-let [msg (<! ch-in)]
-        (let [{:keys [type id]} msg]
-          (if (and (= type "start") id)
-            (let [latch (chan)]
-              (>! @matcher {:uid uid :id id :ch-in ch-in :ch-out ch-out :latch latch})
-              ;; Waits here until game ends
-              (<! latch))
-            (put! ch-out {:type "ignored" :msg msg}))
-          (recur))))
-    (st/on-drained s (fn [] (swap! awaiting dissoc uid)))
+    ;; Put into initial loop
+    (initial-loop player)
     {:status 200 :body "success!"}))
 
 ;;; Websocket connection for the game protocol
