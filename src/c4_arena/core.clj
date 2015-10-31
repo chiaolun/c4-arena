@@ -109,6 +109,23 @@
                       (put! ch-out0 {:type "end"})
                       (initial-loop player0)))))))))))
 
+(defn await-loop [{:keys [waiter] :as player}]
+  (go-loop []
+    (alt!
+      ;; If the control channel is closed, dequeue and stop
+      ;; processing messages (note the lack of recur)
+      waiter
+      ([_]
+       (swap! awaiting dissoc (:uid player)))
+      ;; Otherwise ignore all messages of the client
+      (:ch-in player)
+      ([msg]
+       (if-not msg
+         (swap! awaiting dissoc (:uid player))
+         (do (put! (:ch-out player)
+                   {:type :ignored :msg msg :reason "waiting for match"})
+             (recur)))))))
+
 (defn match-once [{:keys [id] :as player0}]
   (if-let [player1 (->> (vals @awaiting)
                         (remove
@@ -124,23 +141,9 @@
         (swap! match-count update-in [#{(:id player0) (:id player1)}] (fnil inc 0))
         (game-loop (->> [player0 player1] (map #(dissoc % :waiter)))))
     ;; Nobody is available
-    (let [waiter (chan)]
-      (swap! awaiting assoc (:uid player0) (assoc player0 :waiter waiter))
-      (go-loop []
-        (alt!
-          ;; If the control channel is closed, dequeue and stop
-          ;; processing messages (note the lack of recur)
-          waiter
-          ([_]
-           (swap! awaiting dissoc (:uid player0)))
-          ;; Otherwise ignore all messages of the client
-          (:ch-in player0)
-          ([msg]
-           (if-not msg
-             (swap! awaiting dissoc (:uid player0))
-             (do (put! (:ch-out player0)
-                       {:type :ignored :msg msg :reason "waiting for match"})
-                 (recur)))))))))
+    (let [player0 (assoc player0 :waiter (chan))]
+      (swap! awaiting assoc (:uid player0) player0)
+      (await-loop player0))))
 
 (defn matcher-init []
   ;; This function initializes the matcher channel, which is needed
