@@ -36,17 +36,22 @@
 (defonce uid-counter (atom 0))
 
 (defn get-winner [state-val i]
-  (let [cand (state-val i)
-        dirs [1 nrows (dec nrows) (inc nrows)]]
-    (when (->> (for [dir dirs]
-                 (count
-                  (for [sign [- +]
-                        j (reductions + (repeat dir))
-                        :let [k (sign i j)]
-                        :while (and (<= 0 k (dec (* ncols nrows)))
-                                    (= cand (state-val k)))]
-                    true)))
-               (some (fn [n] (>= n (dec n-to-win)))))
+  (let [cand (state-val i)]
+    (when (->>
+           ;; For all 4 angles
+           (for [angle [1 nrows (dec nrows) (inc nrows)]]
+             ;; Count length of
+             (count
+              (for [dir [- +] ;; in both directions
+                    j (reductions + (repeat angle)) ;; straight line
+                    :let [k (dir i j)]
+                    ;; while position is on the board and the same
+                    ;; symbol as the candidate
+                    :while (and (<= 0 k (dec (* ncols nrows)))
+                                (= cand (state-val k)))]
+                true)))
+           ;; At least one line is longer than needed to win
+           (some (fn [n] (>= n (dec n-to-win)))))
       (dec cand))))
 
 (declare initial-loop)
