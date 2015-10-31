@@ -112,16 +112,18 @@
 (defn await-loop [{:keys [waiter] :as player}]
   (go-loop []
     (alt!
-      ;; If the control channel is closed, dequeue and stop
-      ;; processing messages (note the lack of recur)
       waiter
       ([_]
+       ;; If the control channel is closed, dequeue and stop
+       ;; processing messages (note the lack of recur)
        (swap! awaiting dissoc (:uid player)))
-      ;; Otherwise ignore all messages of the client
       (:ch-in player)
       ([msg]
        (if-not msg
+         ;; If the client closes their connection, dequeue and stop
+         ;; loop
          (swap! awaiting dissoc (:uid player))
+         ;; Otherwise ignore all messages of the client
          (do (put! (:ch-out player)
                    {:type :ignored :msg msg :reason "waiting for match"})
              (recur)))))))
