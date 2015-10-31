@@ -26,7 +26,6 @@ def print_board(board):
     print "-" * (ncols + 2)
     print "".join([" |"] + [str(i) for i in range(ncols)])
 
-
 start_game()
 while 1:
     state = json.loads(ws.recv())
@@ -42,6 +41,7 @@ while 1:
         start_game()
     elif state["type"] == "ignored":
         print "Invalid input, try again"
+        ws.send(json.dumps({"type" : "state_request"}))
     elif state["type"] == "state":
         you = state["you"]
         print "Your side:", you

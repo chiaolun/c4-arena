@@ -43,21 +43,6 @@
                (some (fn [n] (>= n (dec n-to-win)))))
       (dec cand))))
 
-(defn process-move [state winner turn move]
-  ;; This function implements the rules of connect-4. If a move is not
-  ;; valid, returns false. If a move is valid, it makes the move and
-  ;; then determines if there has been a winner. If there has been a
-  ;; winner, it marks the winner. Flips turn and returns true at this point
-  (when-let [i (and
-                (<= 0 move (dec ncols))
-                (->> (range (* move nrows) (* (inc move) nrows))
-                     (filter (fn [i] (= (@state i) 0)))
-                     first))]
-    (swap! state assoc i (inc @turn))
-    (swap! turn #(- 1 %))
-    (reset! winner (get-winner @state i))
-    true))
-
 (declare initial-loop)
 (defn game-loop [players]
   (let [ch-ins (mapv :ch-in players)
@@ -65,6 +50,23 @@
         state (atom (vec (repeat (* ncols nrows) 0)))
         turn (atom (rand-int 2))
         winner (atom nil)
+        process-move  (fn [move]
+                        ;; This function implements the rules of
+                        ;; connect-4. If a move is not valid, returns
+                        ;; false. If a move is valid, it makes the
+                        ;; move and then determines if there has been
+                        ;; a winner. If there has been a winner, it
+                        ;; marks the winner. Flips turn and returns
+                        ;; true at this point
+                        (when-let [i (and
+                                      (<= 0 move (dec ncols))
+                                      (->> (range (* move nrows) (* (inc move) nrows))
+                                           (filter (fn [i] (= (@state i) 0)))
+                                           first))]
+                          (swap! state assoc i (inc @turn))
+                          (swap! turn #(- 1 %))
+                          (reset! winner (get-winner @state i))
+                          true))
         notify (fn [ch]
                  (put! ch (cond->
                               {:type :state
@@ -96,15 +98,14 @@
                     (notify ch-out)
                     (and (= type "move")
                          (= @turn actor)
-                         (process-move state winner turn move))
+                         (process-move move))
                     (doseq [ch-out ch-outs]
                       (notify ch-out))
                     :else (put! ch-out {:type :ignored :msg msg}))
                   (if-not @winner
                     (recur)
                     ;; Cleanup
-                    (doseq [{:keys [ch-out0] :as player0} players]
-                      (notify ch-out0)
+                    (doseq [{ch-out0 :ch-out :as player0} players]
                       (put! ch-out0 {:type "end"})
                       (initial-loop player0)))))))))))
 
