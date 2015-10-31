@@ -2,7 +2,20 @@
 
 A place for people to meet and play connect-4 with each other
 
-# Protocol
+# How to run server
+
+Install leiningen - http://leiningen.org/
+
+Go to the base folder, and type ```lein run``` - it will use port
+8001 for websocket connections and port 4222 for the nrepl connection
+
+# How to run client
+
+Go to ```test/``` and run ```./client.py```
+
+You will need websocket-client, which can be installed by ```pip install websocket-client```
+
+# Client protocol
 
 Clients connect via websocket.
 
