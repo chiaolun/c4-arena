@@ -9,9 +9,9 @@ name = raw_input()
 
 ws = websocket.create_connection(server)
 
-ws.send(json.dumps({"type" : "start",  "id" : name}))
-
-print "Waiting for game to start"
+def start_game():
+    ws.send(json.dumps({"type" : "start",  "id" : name}))
+    print "Waiting for game to start"
 
 ncols = 7
 nrows = 6
@@ -26,14 +26,20 @@ def print_board(board):
     print "-" * (ncols + 2)
     print "".join([" |"] + [str(i) for i in range(ncols)])
 
+
+start_game()
 while 1:
     state = json.loads(ws.recv())
     if state["type"] == "end":
         print "Game has ended"
-        break
+        print "Press any key to start another round"
+        raw_input()
+        start_game()
     elif state["type"] == "disconnected":
         print "Other player has disconnected"
-        break
+        print "Press any key to start another round"
+        raw_input()
+        start_game()
     elif state["type"] == "ignored":
         print "Invalid input, try again"
     elif state["type"] == "state":
