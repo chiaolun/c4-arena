@@ -97,8 +97,8 @@
         (when-let [[{:keys [type move] :as msg} ch-in] (alts! ch-ins)]
           (let [actor (.indexOf ch-ins ch-in)
                 ch-out (ch-outs actor)]
-            (if-not msg
-              ;; Cleanup
+            (if msg
+              ;; Cleanup because someone disconnected
               (doseq [{ch-out0 :ch-out :as player0} players
                       :when (not= ch-out ch-out0)]
                 (notify ch-out0)
@@ -124,7 +124,7 @@
                     (notify ch-out)))
                 (if-not @winner
                   (recur)
-                  ;; Cleanup
+                  ;; Cleanup because someone won
                   (doseq [{ch-out0 :ch-out :as player0} players]
                     (put! ch-out0 {:type "end"})
                     (initial-loop player0)))))))))))
