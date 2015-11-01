@@ -104,21 +104,30 @@
                 (notify ch-out0)
                 (put! ch-out0 {:type "disconnected"})
                 (initial-loop player0))
-              (do (cond
-                    (= type "state_request")
-                    (notify ch-out)
-                    (and (= type "move")
-                         (= @turn actor)
-                         (process-move move))
-                    (doseq [ch-out ch-outs]
-                      (notify ch-out))
-                    :else (put! ch-out {:type :ignored :msg msg}))
-                  (if-not @winner
-                    (recur)
-                    ;; Cleanup
-                    (doseq [{ch-out0 :ch-out :as player0} players]
-                      (put! ch-out0 {:type "end"})
-                      (initial-loop player0)))))))))))
+              (let [reason (cond
+                             (not (#{"state_request" "move"} type))
+                             "Unknown message type"
+                             (= type "state_request") nil
+                             (not= @turn actor)
+                             "Not your turn"
+                             ;; Move gets processed here via
+                             ;; side-effect (boo!)
+                             (not (process-move move))
+                             "Invalid move")]
+                (cond
+                  reason
+                  (put! ch-out {:type :ignored :msg msg :reason reason})
+                  (= type "state_request")
+                  (notify ch-out)
+                  :else
+                  (doseq [ch-out ch-outs]
+                    (notify ch-out)))
+                (if-not @winner
+                  (recur)
+                  ;; Cleanup
+                  (doseq [{ch-out0 :ch-out :as player0} players]
+                    (put! ch-out0 {:type "end"})
+                    (initial-loop player0)))))))))))
 
 (defn await-loop [{:keys [waiter] :as player}]
   (go-loop []
@@ -136,7 +145,7 @@
          (swap! awaiting dissoc (:uid player))
          ;; Otherwise ignore all messages of the client
          (do (put! (:ch-out player)
-                   {:type :ignored :msg msg :reason "waiting for match"})
+                   {:type :ignored :msg msg :reason "Waiting for match"})
              (recur)))))))
 
 (defn match-once [{:keys [id] :as player0}]
