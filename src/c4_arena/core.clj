@@ -45,10 +45,12 @@
               (for [dir [- +] ;; in both directions
                     j (reductions + (repeat angle)) ;; straight line
                     :let [k (dir i j)]
-                    ;; while position is on the board and the same
-                    ;; symbol as the candidate
-                    :while (and (<= 0 k (dec (* ncols nrows)))
-                                (= cand (state-val k)))]
+                    ;; while position is
+                    :while (and
+                            ;; on the board
+                            (<= 0 k (dec (* ncols nrows)))
+                            ;; the symbol as the candidate
+                            (= cand (state-val k)))]
                 true)))
            ;; At least one line is longer than needed to win
            (some (fn [n] (>= n (dec n-to-win)))))
