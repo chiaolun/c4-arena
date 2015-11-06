@@ -107,7 +107,7 @@
         (when-let [[{:keys [type move] :as msg} ch-in] (alts! ch-ins)]
           (let [actor (.indexOf ch-ins ch-in)
                 ch-out (ch-outs actor)]
-            (if msg
+            (if-not msg
               ;; Cleanup because someone disconnected
               (doseq [{ch-out0 :ch-out :as player0} players
                       :when (not= ch-out ch-out0)]
