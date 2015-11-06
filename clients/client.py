@@ -35,7 +35,7 @@ class Manual():
 class Random():
     def get_move(self, state):
         import random
-        return random.randint(0,6)
+        return random.randint(0, ncols - 1)
 
 # Read cli options
 nopause = sys.argv[2:] and sys.argv[2] == "nopause"
