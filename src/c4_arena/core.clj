@@ -41,7 +41,7 @@
       ;; Check for winner
       (->>
        ;; For all 4 angles
-       (for [angle [1 nrows (dec nrows) (inc nrows)]]
+       (for [angle [nrows 1 (- (dec nrows)) (inc nrows)]]
          ;; Count length of
          (count
           (for [dir [:- :+]                     ;; in both directions
@@ -52,9 +52,13 @@
                         ;; on the board
                         (<= 0 k (dec (* ncols nrows)))
                         ;; hasn't crossed a border
-                        (not=
-                         (mod k nrows)
-                         (case dir :+ 0 :- (dec nrows)))
+                        (or
+                         ;; Sideways
+                         (= angle nrows)
+                         ;; Angle straight up or slanting up
+                         (not=
+                          (mod k nrows)
+                          (case dir :+ 0 :- (dec nrows))))
                         ;; the symbol as the candidate
                         (= cand (state-val k)))]
             true)))
@@ -215,9 +219,9 @@
         uid (swap! uid-counter inc)
         player {:uid uid :ch-in ch-in :ch-out ch-out}]
     ;; Incoming messages
-    (st/connect (st/map #(parse-string % true) s) ch-in)
+    (st/connect (st/map #(tb/spy :debug (parse-string % true)) s) ch-in)
     ;; Outgoing messages
-    (st/connect (st/map generate-string ch-out) s)
+    (st/connect (st/map #(generate-string (tb/spy :debug %)) ch-out) s)
     ;; Put into initial loop
     (initial-loop player)
     {:status 200 :body "success!"}))
