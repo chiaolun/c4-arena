@@ -11,7 +11,7 @@ Go to the base folder, and type ```lein run``` - it will use port
 
 # How to run client
 
-Go to ```test/``` and run ```./client.py```
+Go to ```clients/``` and run ```./manual.py```
 
 You will need websocket-client, which can be installed by ```pip install websocket-client```
 
