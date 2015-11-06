@@ -36,6 +36,9 @@ class Random():
         import random
         return random.randint(0,6)
 
+# Read cli options
+nopause = sys.argv[2:] and sys.argv[2] == "nopause"
+
 # Instantiate engine
 engine_name = sys.argv[1:] and sys.argv[1]
 if not engine_name or engine_name == "manual":
@@ -52,13 +55,15 @@ while 1:
     state = json.loads(ws.recv())
     if state["type"] == "end":
         print "Game has ended"
-        print "Press Enter to start another round"
-        raw_input()
+        if not nopause:
+            print "Press Enter to start another round"
+            raw_input()
         start_game()
     elif state["type"] == "disconnected":
         print "Other player has disconnected"
-        print "Press Enter to start another round"
-        raw_input()
+        if not nopause:
+            print "Press Enter to start another round"
+            raw_input()
         start_game()
     elif state["type"] == "ignored":
         print "Invalid input, try again"
