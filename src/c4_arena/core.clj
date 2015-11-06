@@ -44,9 +44,9 @@
        (for [angle [1 nrows (dec nrows) (inc nrows)]]
          ;; Count length of
          (count
-          (for [dir [- +]                       ;; in both directions
+          (for [dir [:- :+]                     ;; in both directions
                 j (reductions + (repeat angle)) ;; straight line
-                :let [k (dir i j)]
+                :let [k ((case dir :+ + :- -) i j)]
                 ;; while position is
                 :while (and
                         ;; on the board
@@ -54,7 +54,7 @@
                         ;; hasn't crossed a border
                         (not=
                          (mod k nrows)
-                         (case dir + 0 - (dec nrows)))
+                         (case dir :+ 0 :- (dec nrows)))
                         ;; the symbol as the candidate
                         (= cand (state-val k)))]
             true)))
@@ -62,7 +62,7 @@
        (some (fn [n] (>= n (dec n-to-win)))))
       (dec cand)
       ;; Check if there is no remaining space on the board
-      (not-any? #{0} state-val) -1)))
+      (not-any? #{0} state-val) (dec 0))))
 
 (declare initial-loop)
 (defn game-loop [players]
