@@ -31,8 +31,11 @@ class Manual():
         print "It's your turn, pick a column"
         return int(raw_input())
 
-if not argv[1:] or argv[1] == "manual":
+if not sys.argv[1:] or sys.argv[1] == "manual":
     engine = Manual()
+else:
+    print "Unknown mode:", sys.argv[1]
+    sys.exit(1)
 
 start_game()
 while 1:
@@ -58,7 +61,6 @@ while 1:
         if state.get("winner", False):
             print state["winner"], "has won"
         elif state["turn"] == you:
-            print "It's your turn, pick a column"
             col = engine.get_move()
             ws.send(json.dumps({"type" : "move",  "move" : col}))
         else:
