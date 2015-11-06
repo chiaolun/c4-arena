@@ -27,27 +27,37 @@ def print_board(board):
     print "".join([" |"] + [str(i) for i in range(ncols)])
 
 class Manual():
-    def get_move(state):
+    def get_move(self, state):
         print "It's your turn, pick a column"
         return int(raw_input())
 
-if not sys.argv[1:] or sys.argv[1] == "manual":
+class Random():
+    def get_move(self, state):
+        import random
+        return random.randint(0,6)
+
+# Instantiate engine
+engine_name = sys.argv[1:] and sys.argv[1]
+if not engine_name or engine_name == "manual":
     engine = Manual()
+elif engine_name == "random":
+    engine = Random()
 else:
     print "Unknown mode:", sys.argv[1]
     sys.exit(1)
+print engine_name, "engine chosen"
 
 start_game()
 while 1:
     state = json.loads(ws.recv())
     if state["type"] == "end":
         print "Game has ended"
-        print "Press any key to start another round"
+        print "Press Enter to start another round"
         raw_input()
         start_game()
     elif state["type"] == "disconnected":
         print "Other player has disconnected"
-        print "Press any key to start another round"
+        print "Press Enter to start another round"
         raw_input()
         start_game()
     elif state["type"] == "ignored":
@@ -61,7 +71,7 @@ while 1:
         if state.get("winner", False):
             print state["winner"], "has won"
         elif state["turn"] == you:
-            col = engine.get_move()
+            col = engine.get_move(state)
             ws.send(json.dumps({"type" : "move",  "move" : col}))
         else:
             print "Waiting for other player to play"
