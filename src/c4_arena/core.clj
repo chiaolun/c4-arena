@@ -44,13 +44,17 @@
        (for [angle [1 nrows (dec nrows) (inc nrows)]]
          ;; Count length of
          (count
-          (for [dir [- +] ;; in both directions
+          (for [dir [- +]                       ;; in both directions
                 j (reductions + (repeat angle)) ;; straight line
                 :let [k (dir i j)]
                 ;; while position is
                 :while (and
                         ;; on the board
                         (<= 0 k (dec (* ncols nrows)))
+                        ;; hasn't crossed a border
+                        (not=
+                         (mod k nrows)
+                         (case dir + 0 - (dec nrows)))
                         ;; the symbol as the candidate
                         (= cand (state-val k)))]
             true)))
