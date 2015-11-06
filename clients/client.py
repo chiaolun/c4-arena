@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import websocket, json
+import websocket, json, sys
 
 server = "ws://localhost:8001"
 
@@ -25,6 +25,14 @@ def print_board(board):
         print row
     print "-" * (ncols + 2)
     print "".join([" |"] + [str(i) for i in range(ncols)])
+
+class Manual():
+    def get_move(state):
+        print "It's your turn, pick a column"
+        return int(raw_input())
+
+if not argv[1:] or argv[1] == "manual":
+    engine = Manual()
 
 start_game()
 while 1:
@@ -51,7 +59,7 @@ while 1:
             print state["winner"], "has won"
         elif state["turn"] == you:
             print "It's your turn, pick a column"
-            col = int(raw_input())
+            col = engine.get_move()
             ws.send(json.dumps({"type" : "move",  "move" : col}))
         else:
             print "Waiting for other player to play"
