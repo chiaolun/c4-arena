@@ -26,6 +26,7 @@ def print_board(board):
     print "-" * (ncols + 2)
     print "".join([" |"] + [str(i) for i in range(ncols)])
 
+# Basic Engines
 class Manual():
     def get_move(self, state):
         print "It's your turn, pick a column"
@@ -45,6 +46,9 @@ if not engine_name or engine_name == "manual":
     engine = Manual()
 elif engine_name == "random":
     engine = Random()
+elif engine_name == "neuralq":
+    from neuralq import NeuralQ
+    engine = NeuralQ()
 else:
     print "Unknown mode:", sys.argv[1]
     sys.exit(1)
