@@ -37,24 +37,28 @@
 
 (defn get-winner [state-val i]
   (let [cand (state-val i)]
-    (when (->>
-           ;; For all 4 angles
-           (for [angle [1 nrows (dec nrows) (inc nrows)]]
-             ;; Count length of
-             (count
-              (for [dir [- +] ;; in both directions
-                    j (reductions + (repeat angle)) ;; straight line
-                    :let [k (dir i j)]
-                    ;; while position is
-                    :while (and
-                            ;; on the board
-                            (<= 0 k (dec (* ncols nrows)))
-                            ;; the symbol as the candidate
-                            (= cand (state-val k)))]
-                true)))
-           ;; At least one line is longer than needed to win
-           (some (fn [n] (>= n (dec n-to-win)))))
-      (dec cand))))
+    (cond
+      ;; Check for winner
+      (->>
+       ;; For all 4 angles
+       (for [angle [1 nrows (dec nrows) (inc nrows)]]
+         ;; Count length of
+         (count
+          (for [dir [- +] ;; in both directions
+                j (reductions + (repeat angle)) ;; straight line
+                :let [k (dir i j)]
+                ;; while position is
+                :while (and
+                        ;; on the board
+                        (<= 0 k (dec (* ncols nrows)))
+                        ;; the symbol as the candidate
+                        (= cand (state-val k)))]
+            true)))
+       ;; At least one line is longer than needed to win
+       (some (fn [n] (>= n (dec n-to-win)))))
+      (dec cand)
+      ;; Check if there is no remaining space on the board
+      (not-any? #{0} state-val) -1)))
 
 (declare initial-loop)
 (defn game-loop [players]
