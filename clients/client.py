@@ -27,12 +27,18 @@ def print_board(board):
     print "".join([" |"] + [str(i) for i in range(ncols)])
 
 # Basic Engines
-class Manual():
+class Engine():
+    def get_move(self, state):
+        pass
+    def observe_reward(self, reward, new_state, terminal):
+        pass
+
+class Manual(Engine):
     def get_move(self, state):
         print "It's your turn, pick a column"
         return int(raw_input())
 
-class Random():
+class Random(Engine):
     def get_move(self, state):
         import random
         return random.randint(0, ncols - 1)
@@ -57,29 +63,36 @@ print engine_name, "engine chosen"
 start_game()
 while 1:
     state = json.loads(ws.recv())
-    if state["type"] == "end":
-        print "Game has ended"
+    state_type = state["type"]
+    byebye = ({"end" : "Game has ended",
+               "disconnected" : "Other player has disconnected"}
+              .get(state_type, None))
+
+    if byebye:
+        print byebye
         if not nopause:
             print "Press Enter to start another round"
             raw_input()
         start_game()
-    elif state["type"] == "disconnected":
-        print "Other player has disconnected"
-        if not nopause:
-            print "Press Enter to start another round"
-            raw_input()
-        start_game()
-    elif state["type"] == "ignored":
+        continue
+
+    if state_type == "ignored":
         print "Invalid input, try again"
         ws.send(json.dumps({"type" : "state_request"}))
-    elif state["type"] == "state":
+        continue
+
+    if state_type == "state":
         you = state["you"]
         print "Your side:", you
         print "Board:"
         print_board(state["state"])
-        if state.get("winner", False):
-            print state["winner"], "has won"
-        elif state["turn"] == you:
+        winner = state.get("winner", None)
+
+        if winner:
+            print winner, "has won"
+            continue
+
+        if state["turn"] == you:
             col = engine.get_move(state)
             ws.send(json.dumps({"type" : "move",  "move" : col}))
         else:
