@@ -29,9 +29,11 @@ def valid_columns(state):
             if any(state[0, 3 * i] == 1 for i in range(j * nrows, (j + 1) * nrows))]
 
 class NeuralQ():
-    def __init__(self, epsilon = 0.01, gamma = 1.):
+    def __init__(self, epsilon = 0.01, gamma = 1., save_interval = 100):
         self.epsilon = epsilon
         self.gamma = gamma
+        self.save_interval = save_interval
+        self.epoch = 0
 
         model = Sequential()
         model.add(Dense(30, init='lecun_uniform', input_shape=(state_dim*3,)))
@@ -93,5 +95,8 @@ class NeuralQ():
             y[0][action] = update #target output
 
             model.fit(state, y, batch_size=1, nb_epoch=1, verbose=1)
+            self.epoch += 1
+            if self.epoch % self.save_interval == 0:
+                model.save_weights("model.dat", overwrite=True)
 
         return action, observe_reward
