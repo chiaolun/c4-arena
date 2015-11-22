@@ -27,21 +27,15 @@ def print_board(board):
     print "".join([" |"] + [str(i) for i in range(ncols)])
 
 # Basic Engines
-class Engine():
-    def get_move(self, state):
-        pass
-    def observe_reward(self, reward, new_state, terminal):
-        pass
-
-class Manual(Engine):
-    def get_move(self, state):
+class Manual():
+    def get_move(self, state, side):
         print "It's your turn, pick a column"
-        return int(raw_input())
+        return int(raw_input()), None
 
-class Random(Engine):
-    def get_move(self, state):
+class Random():
+    def get_move(self, state, side):
         import random
-        return random.randint(0, ncols - 1)
+        return random.randint(0, ncols - 1), None
 
 # Read cli options
 nopause = sys.argv[2:] and sys.argv[2] == "nopause"
@@ -54,46 +48,64 @@ elif engine_name == "random":
     engine = Random()
 elif engine_name == "neuralq":
     from neuralq import NeuralQ
-    engine = NeuralQ()
+    engine = NeuralQ(epsilon = 0.1)
 else:
     print "Unknown mode:", sys.argv[1]
     sys.exit(1)
 print engine_name, "engine chosen"
 
+observer = None
 start_game()
 while 1:
-    state = json.loads(ws.recv())
-    state_type = state["type"]
+    msg = json.loads(ws.recv())
+    msg_type = msg["type"]
     byebye = ({"end" : "Game has ended",
                "disconnected" : "Other player has disconnected"}
-              .get(state_type, None))
+              .get(msg_type, None))
 
     if byebye:
         print byebye
         if not nopause:
             print "Press Enter to start another round"
             raw_input()
+        observer = None
         start_game()
         continue
 
-    if state_type == "ignored":
+    if msg_type == "ignored":
         print "Invalid input, try again"
         ws.send(json.dumps({"type" : "state_request"}))
         continue
 
-    if state_type == "state":
-        you = state["you"]
+    if msg_type == "state":
+        you = msg["you"]
+        turn = msg["turn"]
         print "Your side:", you
         print "Board:"
-        print_board(state["state"])
-        winner = state.get("winner", None)
+        print_board(msg["state"])
+        winner = msg.get("winner", None)
 
-        if winner:
+        # Do learning bookkeeping
+        reward = 0
+        if observer and (turn == you or winner != None):
+            if winner == None:
+                observer(reward = 0, new_state = msg["state"])
+            else:
+                if winner == 0:
+                    reward = 0
+                elif winner == you:
+                    reward = 1
+                else:
+                    reward = -1
+                observer(reward = reward, new_state = None)
+            observer = None
+
+        if winner != None:
             print winner, "has won"
             continue
 
-        if state["turn"] == you:
-            col = engine.get_move(state)
-            ws.send(json.dumps({"type" : "move",  "move" : col}))
+        if turn == you:
+            move, observer = engine.get_move(msg["state"], you)
+            ws.send(json.dumps({"type" : "move",  "move" : move}))
         else:
             print "Waiting for other player to play"

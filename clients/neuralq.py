@@ -12,12 +12,32 @@ state_dim = ncols * nrows
 
 # http://outlace.com/Reinforcement-Learning-Part-3/
 
+def standardize(state, side):
+    standard_state = []
+    for x in state:
+        if x == 0:
+            val = 0
+        elif x == side:
+            val = 1
+        else:
+            val = 2
+        standard_state.append(val)
+    return standard_state
+
+def valid_columns(state):
+    return [j for j in range(ncols)
+            if any(state[i] == 0 for i in range(j * nrows, (j + 1) * nrows))]
+
 class NeuralQ():
     def __init__(self, epsilon = 0.01, gamma = 1.):
         self.epsilon = epsilon
         self.gamma = gamma
 
         model = Sequential()
+        model.add(Dense(30, init='lecun_uniform', input_shape=(state_dim,)))
+        model.add(Activation('relu'))
+        #model.add(Dropout(0.2)) I'm not using dropout, but maybe you wanna give it a try?
+
         model.add(Dense(15, init='lecun_uniform', input_shape=(state_dim,)))
         model.add(Activation('relu'))
         #model.add(Dropout(0.2)) I'm not using dropout, but maybe you wanna give it a try?
@@ -30,36 +50,48 @@ class NeuralQ():
 
         self.model = model
 
-    def get_move(self, state):
+    def get_move(self, state, side):
+        model = self.model
+        gamma = self.gamma
+        epsilon = self.epsilon
+
+        state = standardize(state, side)
         state = np.array(state)
-        self.state = state
         #We are in state S
         #Let's run our Q function on S to get Q values for all possible actions
         qval = model.predict(state.reshape(1,state_dim), batch_size=1)
+        qval_allowed = np.empty(qval.shape)
+        qval_allowed[:] = np.NAN
+        valids = valid_columns(state)
+        for i in valids:
+            qval_allowed[0,i] = qval[0,i]
 
-        if (random.random() < self.epsilon): #choose random action
-            action = np.random.randint(0, ncol)
+        if (random.random() < epsilon): #choose random action
+            action = np.random.choice(valids)
         else: #choose best action from Q(s,a) values
-            action = (np.argmax(qval))
-        self.action = action
-        return action
+            action = (np.nanargmax(qval_allowed))
 
-    def observe_reward(self, reward, state, action, new_state, terminal):
-        new_state = np.array(new_state)
+        def observe_reward(reward=0, new_state=None):
+            # This function observes the reward after the move chosen
+            y = np.zeros((1,ncols))
+            y[:] = qval[:]
 
-        qval = model.predict(state.reshape(1,state_dim), batch_size=1)
+            if not new_state:
+                # Terminal state
+                update = reward
+            else:
+                # Non-terminal state
+                new_state = standardize(new_state, side)
+                new_state = np.array(new_state)
 
-        #Get max_Q(S',a)
-        newQ = model.predict(new_state.reshape(1,state_dim), batch_size=1)
-        maxQ = np.max(newQ)
+                #Get max_Q(S',a)
+                newQ = model.predict(new_state.reshape(1,state_dim), batch_size=1)
+                maxQ = np.max(newQ)
 
-        y = np.zeros((1,ncols))
-        y[:] = qval[:]
+                update = (reward + (gamma * maxQ))
 
-        if not terminal: #non-terminal state
-            update = (reward + (self.gamma * maxQ))
-        else:
-            update = reward
-        y[0][action] = update #target output
+            y[0][action] = update #target output
 
-        model.fit(state.reshape(1,state_dim), y, batch_size=1, nb_epoch=1, verbose=1)
+            model.fit(state.reshape(1,state_dim), y, batch_size=1, nb_epoch=1, verbose=1)
+
+        return action, observe_reward
