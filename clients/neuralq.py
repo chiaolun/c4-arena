@@ -37,15 +37,15 @@ class NeuralQ():
 
         model = Sequential()
         model.add(Dense(30, init='lecun_uniform', input_shape=(state_dim*3,)))
-        model.add(Activation('tanh'))
-        #model.add(Dropout(0.2))
+        model.add(Activation('relu'))
+        model.add(Dropout(0.5))
 
         model.add(Dense(15, init='lecun_uniform', input_shape=(state_dim,)))
-        model.add(Activation('tanh'))
-        #model.add(Dropout(0.2))
+        model.add(Activation('relu'))
+        model.add(Dropout(0.5))
 
         model.add(Dense(ncols, init='lecun_uniform'))
-        model.add(Activation('tanh')) #linear output so we can have range of real-valued outputs
+        model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
 
         rms = RMSprop()
         model.compile(loss='mse', optimizer=rms)
