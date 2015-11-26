@@ -18,7 +18,7 @@
    [cider.nrepl :refer [cider-nrepl-handler]]
    [cheshire.core :refer [parse-string generate-string]]
    [c4-arena
-    [players :refer [spawn-random-player]]]))
+    [players :refer [spawn-random-player spawn-perfect-player]]]))
 
 (def db
   {:classname "org.sqlite.JDBC"
@@ -168,7 +168,9 @@
   (if-let [player1 (or
                     (cond
                       (= against "random")
-                      (spawn-random-player ncols))
+                      (spawn-random-player ncols)
+                      (= against "perfect")
+                      (spawn-perfect-player))
                     (->> (vals @awaiting)
                          (remove
                           (fn [{other-id :id}]

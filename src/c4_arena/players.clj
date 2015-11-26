@@ -16,3 +16,16 @@
                          (put! ch-in {:type "move" :move (rand-int ncols)}))
                        (recur)))))
     {:id "random" :waiter (chan) :ch-in ch-in :ch-out ch-out}))
+
+(defn spawn-perfect-player []
+  (let [ch-in (chan) ch-out (chan)]
+    (go-loop []
+      (when-let [msg (<! ch-out)]
+        (condp contains? (:type msg)
+          #{"end" "disconnected"} :terminate
+          #{"ignored"} (recur)
+          #{"state"} (let [{:keys [state turn you]} msg]
+                       (when (= turn you)
+                         (put! ch-in {:type "move" :move (rand-int 7)}))
+                       (recur)))))
+    {:id "random" :waiter (chan) :ch-in ch-in :ch-out ch-out}))
