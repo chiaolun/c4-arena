@@ -31,8 +31,6 @@
 ;;; All the ids waiting for a match
 (defonce awaiting (atom nil))
 
-(defonce match-count (atom {}))
-
 (defonce uid-counter (atom 0))
 
 (defn get-winner [state-val i]
@@ -162,11 +160,18 @@
                    {:type :ignored :msg msg :reason "Waiting for match"})
              (recur)))))))
 
+(defonce match-count (atom {}))
+(defonce active-matches (atom #{}))
 (defn match-once [{:keys [id] :as player0}]
   (if-let [player1 (->> (vals @awaiting)
                         (remove
                          (fn [{other-id :id}]
                            (= id other-id)))
+                        ;; Do not match if there is an active game
+                        ;; going on
+                        (remove
+                         (fn [{other-id :id}]
+                           (@active-matches #{id other-id})))
                         ;; Try to match with the least matched person
                         (sort-by
                          (fn [{other-id :id}]
@@ -174,8 +179,14 @@
                         first)]
     ;; Someone is available!
     (do (async/close! (:waiter player1))
-        (swap! match-count update-in [#{(:id player0) (:id player1)}] (fnil inc 0))
-        (game-loop (->> [player0 player1] (map #(dissoc % :waiter)))))
+        (let [pair #{(:id player0) (:id player1)}]
+          (swap! match-count update-in [pair] (fnil inc 0))
+          (swap! active-matches conj pair)
+          (go
+            (<! (game-loop (->> [player0 player1] (map #(dissoc % :waiter)))))
+            ;; Loop ends when the game is over. We can then mark the
+            ;; match as no longer active
+            (swap! active-matches disj pair))))
     ;; Nobody is available
     (let [player0 (assoc player0 :waiter (chan))]
       (swap! awaiting assoc (:uid player0) player0)
