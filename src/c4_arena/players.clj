@@ -2,9 +2,11 @@
   (:require
    [clojure.core
     [async :as async :refer [go go-loop <! >! chan put! alt! alts!]]]
-   [taoensso.timbre :as tb]))
+   [taoensso.timbre :as tb]
+   [c4-arena
+    [c4-rules :refer [ncols]]]))
 
-(defn spawn-random-player [ncols]
+(defn spawn-random-player []
   (let [ch-in (chan) ch-out (chan)]
     (go-loop []
       (when-let [msg (<! ch-out)]
