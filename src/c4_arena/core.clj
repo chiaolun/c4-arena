@@ -16,7 +16,9 @@
     :refer [defroutes GET]]
    [clojure.tools.nrepl.server :as nrepl]
    [cider.nrepl :refer [cider-nrepl-handler]]
-   [cheshire.core :refer [parse-string generate-string]]))
+   [cheshire.core :refer [parse-string generate-string]]
+   [c4-arena
+    [players :refer [spawn-random-player]]]))
 
 (def db
   {:classname "org.sqlite.JDBC"
@@ -92,7 +94,7 @@
                           true))
         notify (fn [ch]
                  (put! ch (cond->
-                              {:type :state
+                              {:type "state"
                                :turn (inc (or @turn -1))
                                :you (inc (.indexOf ch-outs ch))
                                :state @state}
@@ -128,7 +130,7 @@
                              "Invalid move")]
                 (cond
                   reason
-                  (put! ch-out {:type :ignored :msg msg :reason reason})
+                  (put! ch-out {:type "ignored" :msg msg :reason reason})
                   (= type "state_request")
                   (notify ch-out)
                   :else
@@ -157,31 +159,35 @@
          (swap! awaiting dissoc (:uid player))
          ;; Otherwise ignore all messages of the client
          (do (put! (:ch-out player)
-                   {:type :ignored :msg msg :reason "Waiting for match"})
+                   {:type "ignored" :msg msg :reason "Waiting for match"})
              (recur)))))))
 
 (defonce match-count (atom {}))
 (defonce active-matches (atom #{}))
 (defn match-once [{:keys [id against] :as player0}]
-  (if-let [player1 (->> (vals @awaiting)
-                        (remove
-                         (fn [{other-id :id}]
-                           (= other-id id)))
-                        ;; If present, play against requested player
-                        (filter
-                         (fn [{other-id :id}]
-                           (or (nil? against)
-                               (= other-id against))))
-                        ;; Do not match if there is an active game
-                        ;; going on
-                        (remove
-                         (fn [{other-id :id}]
-                           (@active-matches #{id other-id})))
-                        ;; Try to match with the least matched person
-                        (sort-by
-                         (fn [{other-id :id}]
-                           (@match-count #{id other-id})))
-                        first)]
+  (if-let [player1 (or
+                    (cond
+                      (= against "random")
+                      (spawn-random-player ncols))
+                    (->> (vals @awaiting)
+                         (remove
+                          (fn [{other-id :id}]
+                            (= other-id id)))
+                         ;; If present, play against requested player
+                         (filter
+                          (fn [{other-id :id}]
+                            (or (nil? against)
+                                (= other-id against))))
+                         ;; Do not match if there is an active game
+                         ;; going on
+                         (remove
+                          (fn [{other-id :id}]
+                            (@active-matches #{id other-id})))
+                         ;; Try to match with the least matched person
+                         (sort-by
+                          (fn [{other-id :id}]
+                            (@match-count #{id other-id})))
+                         first))]
     ;; Someone is available!
     (do (async/close! (:waiter player1))
         (let [pair #{(:id player0) (:id player1)}]
