@@ -106,7 +106,7 @@
         (notify ch-out))
       ;; During the game
       (loop []
-        (when-let [[{:keys [type move] :as msg} ch-in] (alts! ch-ins)]
+        (when-let [[{:keys [type] :as msg} ch-in] (alts! ch-ins)]
           (let [actor (.indexOf ch-ins ch-in)
                 ch-out (ch-outs actor)]
             (if-not msg
@@ -124,7 +124,7 @@
                              "Not your turn"
                              ;; Move gets processed here via
                              ;; side-effect (boo!)
-                             (not (process-move move))
+                             (not (process-move (:move msg)))
                              "Invalid move")]
                 (cond
                   reason
