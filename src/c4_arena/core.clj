@@ -178,6 +178,11 @@
                           (fn [{other-id :id}]
                             (or (nil? against)
                                 (= other-id against))))
+                         ;; Enforce in the other direction as well
+                         (filter
+                          (fn [{other-against :against}]
+                            (or (nil? other-against)
+                                (= id other-against))))
                          ;; Do not match if there is an active game
                          ;; going on
                          (remove
