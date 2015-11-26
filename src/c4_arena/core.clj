@@ -18,7 +18,7 @@
    [cider.nrepl :refer [cider-nrepl-handler]]
    [cheshire.core :refer [parse-string generate-string]]
    [c4-arena
-    [c4-rules :refer [ncols nrows get-winner]]
+    [c4-rules :refer [ncols nrows make-move get-winner]]
     [players :refer [spawn-random-player spawn-perfect-player]]]))
 
 (def db
@@ -39,23 +39,20 @@
         state (atom (vec (repeat (* ncols nrows) 0)))
         turn (atom (rand-int 2))
         winner (atom nil)
-        process-move  (fn [move]
-                        ;; This function implements the rules of
-                        ;; connect-4. If a move is not valid, returns
-                        ;; false. If a move is valid, it makes the
-                        ;; move and then determines if there has been
-                        ;; a winner. If there has been a winner, it
-                        ;; marks the winner. Flips turn and returns
-                        ;; true at this point
-                        (when-let [i (and
-                                      (<= 0 move (dec ncols))
-                                      (->> (range (* move nrows) (* (inc move) nrows))
-                                           (filter (fn [i] (= (@state i) 0)))
-                                           first))]
-                          (swap! state assoc i (inc @turn))
-                          (swap! turn #(- 1 %))
-                          (reset! winner (get-winner @state i))
-                          true))
+        process-move (fn [move]
+                       ;; This function enforces the rules of
+                       ;; connect-4. If a move is not valid, returns
+                       ;; false. If a move is valid, it makes the move
+                       ;; and then determines if there has been a
+                       ;; winner. If there has been a winner, it marks
+                       ;; the winner. Flips turn and returns true at
+                       ;; this point
+                       (let [[new-state-val i] (make-move @state move (inc @turn))]
+                         (when new-state-val
+                           (reset! state new-state-val)
+                           (swap! turn #(- 1 %))
+                           (reset! winner (get-winner @state i))
+                           true)))
         notify (fn [ch]
                  (put! ch (cond->
                               {:type "state"
