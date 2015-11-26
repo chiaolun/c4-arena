@@ -212,14 +212,16 @@
 (defn initial-loop [{:keys [ch-in ch-out] :as player}]
   (go-loop []
     (when-let [msg (<! ch-in)]
-      (let [{:keys [type id]} msg
+      (let [{:keys [type id against]} msg
             reason (cond
                      (not= type "start")
                      "Only start messages allowed in current state"
                      (string/blank? id)
-                     "You need to include an id")]
+                     "You need to include an id"
+                     (#{"random" "perfect"} id)
+                     (format "\"%s\" is a reserved id used for a reference player" id))]
         (if-not reason
-          (>! @matcher (assoc player :id id))
+          (>! @matcher (assoc player :id id :against against))
           (do (put! ch-out {:type "ignored" :msg msg :reason reason})
               (recur)))))))
 
