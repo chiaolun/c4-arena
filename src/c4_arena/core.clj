@@ -162,11 +162,16 @@
 
 (defonce match-count (atom {}))
 (defonce active-matches (atom #{}))
-(defn match-once [{:keys [id] :as player0}]
+(defn match-once [{:keys [id against] :as player0}]
   (if-let [player1 (->> (vals @awaiting)
                         (remove
                          (fn [{other-id :id}]
-                           (= id other-id)))
+                           (= other-id id)))
+                        ;; If present, play against requested player
+                        (filter
+                         (fn [{other-id :id}]
+                           (or (nil? against)
+                               (= other-id against))))
                         ;; Do not match if there is an active game
                         ;; going on
                         (remove
