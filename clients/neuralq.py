@@ -82,7 +82,7 @@ class NeuralQ():
         else: #choose best action from Q(s,a) values
             action = (np.nanargmax(qval_allowed))
 
-        def observe_reward(reward=0, new_state=None, action=action):
+        def observe_reward(reward=0, new_state=None):
             if new_state:
                 new_state = standardize(new_state, side)
                 new_state = np.array(new_state)
@@ -99,7 +99,7 @@ class NeuralQ():
             X_train = []
             y_train = []
 
-            for old_state, action, reward, new_state in minibatch:
+            for old_state, action0, reward, new_state in minibatch:
                 old_qval = model.predict(old_state, batch_size=1)
 
                 # This function observes the reward after the move chosen
@@ -118,7 +118,7 @@ class NeuralQ():
 
                     update = (reward + (gamma * maxQ))
 
-                y[0][action] = update #target output
+                y[0][action0] = update #target output
                 X_train.append(old_state.reshape(state_dim*3,))
                 y_train.append(y.reshape(ncols,))
 
