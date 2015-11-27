@@ -5,6 +5,7 @@ from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import RMSprop
 import numpy as np
 import random
+import os.path
 
 ncols = 7
 nrows = 6
@@ -49,6 +50,9 @@ class NeuralQ():
 
         rms = RMSprop()
         model.compile(loss='mse', optimizer=rms)
+
+        if os.path.isfile("model.dat")
+            model.load_weights("model.dat")
 
         self.model = model
 
