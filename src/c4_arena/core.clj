@@ -19,7 +19,7 @@
    [cheshire.core :refer [parse-string generate-string]]
    [c4-arena
     [c4-rules :refer [ncols nrows make-move get-winner]]
-    [players :refer [spawn-random-player spawn-perfect-player]]]))
+    [players :refer [spawn-random-player spawn-aima-player]]]))
 
 (def db
   {:classname "org.sqlite.JDBC"
@@ -38,6 +38,7 @@
         ch-ins (mapv :ch-in players)
         ch-outs (mapv :ch-out players)
         state (atom (vec (repeat (* ncols nrows) 0)))
+        last-move (atom {})
         turn (atom 0)
         winner (atom nil)
         process-move (fn [move]
@@ -53,6 +54,7 @@
                            (reset! state new-state-val)
                            (swap! turn #(- 1 %))
                            (reset! winner (get-winner @state i))
+                           (reset! last-move [move move])
                            true)))
         notify (fn [ch]
                  (put! ch (cond->
@@ -60,10 +62,13 @@
                                :turn (inc (or @turn -1))
                                :you (inc (.indexOf ch-outs ch))
                                :state @state}
+                            (@last-move (.indexOf ch-outs ch))
+                            (assoc :last-move (@last-move (.indexOf ch-outs ch)))
                             @winner
                             (assoc
                              :winner (inc @winner)
-                             :turn 0))))]
+                             :turn 0)))
+                 (swap! last-move assoc (.indexOf ch-outs ch) nil))]
     (go
       ;; Start out by notifying both sides of the board state
       (doseq [ch-out ch-outs]
@@ -131,8 +136,8 @@
                     (cond
                       (= against "random")
                       (spawn-random-player)
-                      (= against "perfect")
-                      (spawn-perfect-player))
+                      (= against "aima")
+                      (spawn-aima-player))
                     (->> (vals @awaiting)
                          (remove
                           (fn [{other-id :id}]
@@ -198,7 +203,7 @@
                      "Only start messages allowed in current state"
                      (string/blank? id)
                      "You need to include an id"
-                     (#{"random" "perfect"} id)
+                     (#{"random" "aima"} id)
                      (format "\"%s\" is a reserved id used for a reference player" id))]
         (if-not reason
           (>! @matcher (assoc player :id id :against against))
