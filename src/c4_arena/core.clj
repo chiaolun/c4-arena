@@ -34,10 +34,11 @@
 
 (declare initial-loop)
 (defn game-loop [players]
-  (let [ch-ins (mapv :ch-in players)
+  (let [players (shuffle players)
+        ch-ins (mapv :ch-in players)
         ch-outs (mapv :ch-out players)
         state (atom (vec (repeat (* ncols nrows) 0)))
-        turn (atom (rand-int 2))
+        turn (atom 0)
         winner (atom nil)
         process-move (fn [move]
                        ;; This function enforces the rules of
