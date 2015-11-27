@@ -54,7 +54,7 @@ elif engine_name == "random":
     engine = Random()
 elif engine_name == "neuralq":
     from neuralq import NeuralQ
-    engine = NeuralQ(epsilon = 0.1)
+    engine = NeuralQ(epsilon = 0.1, Gamma = 0.5)
 else:
     print "Unknown mode:", sys.argv[1]
     sys.exit(1)
