@@ -11,7 +11,16 @@ Go to the base folder, and type ```lein run``` - it will use port
 
 # How to run client
 
-Go to ```clients/``` and run ```./manual.py```
+Go to ```clients/``` and run ```./client.py --name Alice```
+
+There are two reference players that you can play against, and also
+two game engines that you can use, like this:
+```
+./client.py --name Bob --engine random --against random
+./client.py --name Carl --engine neuralq --against aima
+```
+
+The AIMA reference client is from [here](https://github.com/aima-java/aima-java/blob/5856227325ef64b9e9493d663943c6080490848f/aima-core/src/main/java/aima/core/environment/connectfour/ConnectFourAIPlayer.java). It's an IterativeDeepeningAlphaBetaSearch that's been restricted to 0.5 seconds of computation time.
 
 You will need websocket-client, which can be installed by ```pip install websocket-client```
 
