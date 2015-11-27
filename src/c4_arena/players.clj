@@ -15,7 +15,9 @@
       (when-let [msg (<! ch-out)]
         (condp contains? (:type msg)
           #{"end" "disconnected"} :terminate
-          #{"ignored"} (recur)
+          #{"ignored"} (do
+                         (put! ch-in {:type "state_request"})
+                         (recur))
           #{"state"} (let [{:keys [state turn you]} msg]
                        (when (= turn you)
                          (put! ch-in {:type "move" :move (rand-int ncols)}))

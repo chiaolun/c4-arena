@@ -1,16 +1,25 @@
 #!/usr/bin/env python
 
-import websocket, json, sys
+import websocket, json, sys, argparse
 
 server = "ws://localhost:8001"
 
-print "What is your name?"
-name = raw_input()
+parser = argparse.ArgumentParser(description='Play Connect4!')
+
+parser.add_argument('--name', required=True, help='Your id on the server')
+parser.add_argument('--engine', required=True, default="random",
+                    help='Game engine to use ([manual]/random/neuralq)')
+parser.add_argument('--against',
+                    help='Who to play against (random/aima/<id of other player>)')
+parser.add_argument('--nopause', action="store_true",
+                    help='Do not pause between games')
+
+args = parser.parse_args()
 
 ws = websocket.create_connection(server)
 
 def start_game():
-    ws.send(json.dumps({"type" : "start",  "id" : name}))
+    ws.send(json.dumps({"type" : "start",  "id" : args.name, "against" : args.against}))
     print "Waiting for game to start"
 
 ncols = 7
@@ -37,12 +46,9 @@ class Random():
         import random
         return random.randint(0, ncols - 1), None
 
-# Read cli options
-nopause = sys.argv[2:] and sys.argv[2] == "nopause"
-
 # Instantiate engine
-engine_name = sys.argv[1:] and sys.argv[1]
-if not engine_name or engine_name == "manual":
+engine_name = args.engine
+if engine_name == "manual":
     engine = Manual()
 elif engine_name == "random":
     engine = Random()
@@ -65,7 +71,7 @@ while 1:
 
     if byebye:
         print byebye
-        if not nopause:
+        if not args.nopause:
             print "Press Enter to start another round"
             raw_input()
         observer = None
