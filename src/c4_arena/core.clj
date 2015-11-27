@@ -163,7 +163,7 @@
                             (@match-count #{id other-id})))
                          first))]
     ;; Someone is available!
-    (do (async/close! (:waiter player1))
+    (do (some-> player1 :waiter async/close!)
         (let [pair #{(:id player0) (:id player1)}]
           (swap! match-count update-in [pair] (fnil inc 0))
           (swap! active-matches conj pair)

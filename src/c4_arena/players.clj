@@ -22,7 +22,7 @@
                        (when (= turn you)
                          (put! ch-in {:type "move" :move (rand-int ncols)}))
                        (recur)))))
-    {:id "random" :waiter (chan) :ch-in ch-in :ch-out ch-out}))
+    {:id "random" :ch-in ch-in :ch-out ch-out}))
 
 (defn spawn-aima-player []
   (let [ch-in (chan) ch-out (chan)
@@ -39,4 +39,4 @@
                        (when (= turn you)
                          (put! ch-in {:type "move" :move (.makeDecision search c4-state)}))
                        (recur)))))
-    {:id "random" :waiter (chan) :ch-in ch-in :ch-out ch-out}))
+    {:id "aima" :ch-in ch-in :ch-out ch-out}))
