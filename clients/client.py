@@ -7,7 +7,7 @@ server = "ws://localhost:8001"
 parser = argparse.ArgumentParser(description='Play Connect4!')
 
 parser.add_argument('--name', required=True, help='Your id on the server')
-parser.add_argument('--engine', required=True, default="random",
+parser.add_argument('--engine', default="manual",
                     help='Game engine to use ([manual]/random/neuralq)')
 parser.add_argument('--against',
                     help='Who to play against (random/aima/<id of other player>)')
