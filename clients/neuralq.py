@@ -35,17 +35,20 @@ class NeuralQ():
         self.gamma = gamma
         self.save_interval = save_interval
         self.epoch = 0
+        self.replay = []
+        self.memory_size = 100
+        self.batch_size = 50
 
         model = Sequential()
-        model.add(Dense(30, init='zero', input_shape=(state_dim*3,)))
+        model.add(Dense(30, init='lecun_uniform', input_shape=(state_dim*3,)))
         model.add(Activation('relu'))
         # model.add(Dropout(0.5))
 
-        # model.add(Dense(15, init='zero', input_shape=(state_dim,)))
+        # model.add(Dense(15, init='lecun_uniform', input_shape=(state_dim,)))
         # model.add(Activation('relu'))
         # # model.add(Dropout(0.5))
 
-        model.add(Dense(ncols, init='zero'))
+        model.add(Dense(ncols, init='lecun_uniform'))
         model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
 
         rms = RMSprop()
@@ -60,6 +63,8 @@ class NeuralQ():
         model = self.model
         gamma = self.gamma
         epsilon = self.epsilon
+        memory_size = self.memory_size
+        batch_size = self.batch_size
 
         state = standardize(state, side)
         state = np.array(state)
@@ -77,28 +82,49 @@ class NeuralQ():
         else: #choose best action from Q(s,a) values
             action = (np.nanargmax(qval_allowed))
 
-        def observe_reward(reward=0, new_state=None):
-            # This function observes the reward after the move chosen
-            y = np.zeros((1,ncols))
-            y[:] = qval[:]
-
-            if not new_state:
-                # Terminal state
-                update = reward
-            else:
-                # Non-terminal state
+        def observe_reward(reward=0, new_state=None, action=action):
+            if new_state:
                 new_state = standardize(new_state, side)
                 new_state = np.array(new_state)
 
-                #Get max_Q(S',a)
-                newQ = model.predict(new_state, batch_size=1)
-                maxQ = np.max(newQ)
+            self.replay.append((state, action, reward, new_state))
+            if len(self.replay) > memory_size:
+                self.replay.pop(0)
+            else:
+                # Don't start training until you have enough samples
+                return
 
-                update = (reward + (gamma * maxQ))
+            minibatch = random.sample(self.replay, batch_size)
 
-            y[0][action] = update #target output
+            X_train = []
+            y_train = []
 
-            model.fit(state, y, batch_size=1, nb_epoch=1, verbose=1)
+            for old_state, action, reward, new_state in minibatch:
+                old_qval = model.predict(old_state, batch_size=1)
+
+                # This function observes the reward after the move chosen
+                y = np.zeros((1,ncols))
+                y[:] = old_qval[:]
+
+                if new_state == None:
+                    # Terminal state
+                    update = reward
+                else:
+                    # Non-terminal state
+
+                    #Get max_Q(S',a)
+                    newQ = model.predict(new_state, batch_size=1)
+                    maxQ = np.max(newQ)
+
+                    update = (reward + (gamma * maxQ))
+
+                y[0][action] = update #target output
+                X_train.append(old_state.reshape(state_dim*3,))
+                y_train.append(y.reshape(ncols,))
+
+            X_train = np.array(X_train)
+            y_train = np.array(y_train)
+            model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=1, verbose=1)
             self.epoch += 1
             if self.epoch % self.save_interval == 0:
                 model.save_weights("model.dat", overwrite=True)
