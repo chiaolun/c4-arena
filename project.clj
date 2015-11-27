@@ -14,6 +14,7 @@
                  ;; with binding EC2 interfaces
                  [io.netty/netty-all "4.1.0.Beta7"]
                  [cheshire "5.5.0"]
+                 [aima-core "0.10.5"]
                  [org.xerial/sqlite-jdbc "3.8.11.2"]
                  [migratus "0.8.7"]]
   :plugins [[cider/cider-nrepl "0.9.1"]
