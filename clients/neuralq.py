@@ -51,7 +51,7 @@ class NeuralQ():
         rms = RMSprop()
         model.compile(loss='mse', optimizer=rms)
 
-        if os.path.isfile("model.dat")
+        if os.path.isfile("model.dat"):
             model.load_weights("model.dat")
 
         self.model = model
