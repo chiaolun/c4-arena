@@ -42,7 +42,7 @@ class NeuralQ():
         model = Sequential()
         model.add(Dense(80, init='lecun_uniform', input_shape=(state_dim*3,)))
         model.add(Activation('relu'))
-        # model.add(Dropout(0.5))
+        model.add(Dropout(0.5))
 
         # model.add(Dense(20, init='lecun_uniform'))
         # model.add(Activation('relu'))
