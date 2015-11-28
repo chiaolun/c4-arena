@@ -15,19 +15,19 @@ state_dim = ncols * nrows
 
 def standardize(state):
     N = len(state)
-    standard_state = np.zeros((N,3))
+    standard_state = np.zeros((N,2))
     for i, x in enumerate(state):
         if x == 0:
-            standard_state[i,0] = 1.
+            continue
         elif x == 1:
-            standard_state[i,1] = 1.
+            standard_state[i,0] = 1.
         else:
-            standard_state[i,2] = 1.
-    return standard_state.reshape(1,state_dim*3)
+            standard_state[i,1] = 1.
+    return standard_state.reshape(1,state_dim*2)
 
 def valid_columns(state):
     return [j for j in range(ncols)
-            if any(state[0, 3 * i] == 1 for i in range(j * nrows, (j + 1) * nrows))]
+            if any(state[0, 2 * i] == 1 for i in range(j * nrows, (j + 1) * nrows))]
 
 class NeuralQ():
     def __init__(self, epsilon = 0.01, gamma = 1., save_interval = 100):
@@ -40,7 +40,7 @@ class NeuralQ():
         self.batch_size = 50
 
         model = Sequential()
-        model.add(Dense(80, init='lecun_uniform', input_shape=(state_dim*3,)))
+        model.add(Dense(80, init='lecun_uniform', input_shape=(state_dim*2,)))
         model.add(Activation('relu'))
         model.add(Dropout(0.5))
 
@@ -123,7 +123,7 @@ class NeuralQ():
                     update = (reward + (gamma * maxQ))
 
                 y[0][action0] = update #target output
-                X_train.append(old_state.reshape(state_dim*3,))
+                X_train.append(old_state.reshape(state_dim*2,))
                 y_train.append(y.reshape(ncols,))
 
             X_train = np.array(X_train)
