@@ -43,13 +43,17 @@ class NeuralQ():
         self.models = {}
         for side in [1,2]:
             model = Sequential()
-            model.add(Dense(80, init='lecun_uniform', input_shape=(state_dim*2,)))
+            model.add(Dense(60, init='lecun_uniform', input_shape=(state_dim*2,)))
             model.add(Activation('relu'))
-            # model.add(Dropout(0.5))
+            model.add(Dropout(0.5))
 
-            # model.add(Dense(20, init='lecun_uniform'))
-            # model.add(Activation('relu'))
-            # # model.add(Dropout(0.5))
+            model.add(Dense(40, init='lecun_uniform'))
+            model.add(Activation('relu'))
+            model.add(Dropout(0.5))
+
+            model.add(Dense(20, init='lecun_uniform'))
+            model.add(Activation('relu'))
+            model.add(Dropout(0.5))
 
             model.add(Dense(ncols, init='lecun_uniform'))
             model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
