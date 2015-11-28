@@ -13,13 +13,13 @@ state_dim = ncols * nrows
 
 # http://outlace.com/Reinforcement-Learning-Part-3/
 
-def standardize(state, side):
+def standardize(state):
     N = len(state)
     standard_state = np.zeros((N,3))
     for i, x in enumerate(state):
         if x == 0:
             standard_state[i,0] = 1.
-        elif x == side:
+        elif x == 1:
             standard_state[i,1] = 1.
         else:
             standard_state[i,2] = 1.
@@ -66,7 +66,7 @@ class NeuralQ():
         memory_size = self.memory_size
         batch_size = self.batch_size
 
-        state = standardize(state, side)
+        state = standardize(state)
         state = np.array(state)
         #We are in state S
         #Let's run our Q function on S to get Q values for all possible actions
@@ -79,12 +79,16 @@ class NeuralQ():
 
         if (random.random() < epsilon): #choose random action
             action = np.random.choice(valids)
-        else: #choose best action from Q(s,a) values
+        elif side == 1: #choose best action from Q(s,a) values
             action = (np.nanargmax(qval_allowed))
+        else:
+            action = (np.nanargmin(qval_allowed))
 
         def observe_reward(reward=0, new_state=None):
+            if side != 1:
+                reward *= -1
             if new_state:
-                new_state = standardize(new_state, side)
+                new_state = standardize(new_state)
                 new_state = np.array(new_state)
 
             self.replay.append((state, action, reward, new_state))
