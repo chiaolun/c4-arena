@@ -27,7 +27,8 @@ def standardize(state):
 
 def valid_columns(state):
     return [j for j in range(ncols)
-            if any(state[0, 2 * i] == 1 for i in range(j * nrows, (j + 1) * nrows))]
+            if any(all([state[0, 2 * i + k] == 0 for k in range(2)])
+                   for i in range(j * nrows, (j + 1) * nrows))]
 
 class NeuralQ():
     def __init__(self, epsilon = 0.01, gamma = 1., save_interval = 100):
