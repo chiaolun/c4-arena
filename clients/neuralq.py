@@ -112,7 +112,7 @@ class NeuralQ():
                 y = np.zeros((1,ncols))
                 y[:] = old_qval[:]
 
-                if new_state == None:
+                if new_state is None:
                     # Terminal state
                     update = reward
                 else:
