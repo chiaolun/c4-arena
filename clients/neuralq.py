@@ -56,8 +56,8 @@ class NeuralQ():
             rms = RMSprop()
             model.compile(loss='mse', optimizer=rms)
 
-            if os.path.isfile("model_{side}.dat".format(side)):
-                model.load_weights("model_{side}.dat".format(side))
+            if os.path.isfile("model_{side}.dat".format(side=side)):
+                model.load_weights("model_{side}.dat".format(side=side))
 
             self.models[side] = model
 
@@ -133,6 +133,6 @@ class NeuralQ():
             model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=1, verbose=1)
             self.epoch += 1
             if self.epoch % self.save_interval == 0:
-                model.save_weights("model_{side}.dat".format(side), overwrite=True)
+                model.save_weights("model_{side}.dat".format(side=side), overwrite=True)
 
         return action, observe_reward
