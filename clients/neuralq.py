@@ -62,7 +62,7 @@ class NeuralQ():
             self.models[side] = model
 
     def get_move(self, state, side):
-        model = self.model[side]
+        model = self.models[side]
         gamma = self.gamma
         epsilon = self.epsilon
         memory_size = self.memory_size
