@@ -60,6 +60,8 @@ else:
     sys.exit(1)
 print engine_name, "engine chosen"
 
+ngames = 0
+nwins = 0
 observer = None
 start_game()
 while 1:
@@ -107,7 +109,15 @@ while 1:
             observer = None
 
         if winner != None:
+            ngames += 1
+            if winner == you:
+                nwins += 1
             print "You have", ("won!" if winner == you else "lost!")
+            print "Win ratio:{0}/{1}".format(nwins,ngames)
+            if ngames > 500:
+                print "Resetting win counter"
+                nwins = 0
+                ngames = 0
             continue
 
         if turn == you:
