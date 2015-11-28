@@ -94,7 +94,7 @@ while 1:
         # Do learning bookkeeping
         reward = 0
         if observer and (turn == you or winner != None):
-            if winner == None:
+            if winner is None:
                 observer(reward = 0, new_state = msg["state"])
             else:
                 if winner == 0:
@@ -107,7 +107,7 @@ while 1:
             observer = None
 
         if winner != None:
-            print winner, "has won"
+            print "You have", ("won!" if winner == you else "lost!")
             continue
 
         if turn == you:
