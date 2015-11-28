@@ -39,28 +39,30 @@ class NeuralQ():
         self.memory_size = 100
         self.batch_size = 50
 
-        model = Sequential()
-        model.add(Dense(80, init='lecun_uniform', input_shape=(state_dim*2,)))
-        model.add(Activation('relu'))
-        model.add(Dropout(0.5))
+        self.models = {}
+        for side in [1,2]:
+            model = Sequential()
+            model.add(Dense(80, init='lecun_uniform', input_shape=(state_dim*2,)))
+            model.add(Activation('relu'))
+            model.add(Dropout(0.5))
 
-        # model.add(Dense(20, init='lecun_uniform'))
-        # model.add(Activation('relu'))
-        # # model.add(Dropout(0.5))
+            # model.add(Dense(20, init='lecun_uniform'))
+            # model.add(Activation('relu'))
+            # # model.add(Dropout(0.5))
 
-        model.add(Dense(ncols, init='lecun_uniform'))
-        model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
+            model.add(Dense(ncols, init='lecun_uniform'))
+            model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
 
-        rms = RMSprop()
-        model.compile(loss='mse', optimizer=rms)
+            rms = RMSprop()
+            model.compile(loss='mse', optimizer=rms)
 
-        if os.path.isfile("model.dat"):
-            model.load_weights("model.dat")
+            if os.path.isfile("model_{side}.dat".format(side)):
+                model.load_weights("model_{side}.dat".format(side))
 
-        self.model = model
+            self.models[side] = model
 
     def get_move(self, state, side):
-        model = self.model
+        model = self.model[side]
         gamma = self.gamma
         epsilon = self.epsilon
         memory_size = self.memory_size
@@ -131,6 +133,6 @@ class NeuralQ():
             model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=1, verbose=1)
             self.epoch += 1
             if self.epoch % self.save_interval == 0:
-                model.save_weights("model.dat", overwrite=True)
+                model.save_weights("model_{side}.dat".format(side), overwrite=True)
 
         return action, observe_reward
