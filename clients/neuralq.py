@@ -99,33 +99,33 @@ class NeuralQ():
             X_train = {1 : [], 2 : []}
             y_train = {1 : [], 2 : []}
 
-            for side0, old_state, action0, reward, new_state in minibatch:
+            for side0, old_state0, action0, reward0, new_state0 in minibatch:
                 model0 = self.models[side0]
-                old_qval = model0.predict(old_state, batch_size=1)
+                old_qval = model0.predict(old_state0, batch_size=1)
 
                 # This function observes the reward after the move chosen
                 y = np.zeros((1,ncols))
                 y[:] = old_qval[:]
 
-                if new_state is None:
+                if new_state0 is None:
                     # Terminal state
-                    update = reward
+                    update = reward0
                 else:
                     # Non-terminal state
 
                     #Get max_Q(S',a)
-                    newQ = model0.predict(new_state, batch_size=1)
+                    newQ = model0.predict(new_state0, batch_size=1)
                     qval_allowed = np.empty(newQ.shape)
                     qval_allowed[:] = np.NAN
-                    valids = valid_columns(old_state)
+                    valids = valid_columns(old_state0)
                     for i in valids:
                         qval_allowed[0,i] = newQ[0,i]
                     maxQ = np.nanmax(qval_allowed)
 
-                    update = (reward + (gamma * maxQ))
+                    update = (reward0 + (gamma * maxQ))
 
                 y[0][action0] = update #target output
-                X_train[side0].append(old_state.reshape(state_dim*2,))
+                X_train[side0].append(old_state0.reshape(state_dim*2,))
                 y_train[side0].append(y.reshape(ncols,))
 
             for side0 in [1,2]:
