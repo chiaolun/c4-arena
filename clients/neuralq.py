@@ -138,9 +138,6 @@ class NeuralQ():
             self.epoch += 1
             if self.epoch % self.save_interval == 0:
                 for side0 in [1,2]:
-                    (self
-                     .models[side0]
-                     .save_weights("model_{side}.dat".format(side=side0),
-                                   overwrite=True))
+                    self.models[side0].save_weights("model_{side}.dat".format(side=side0),overwrite=True)
 
         return action, observe_reward
