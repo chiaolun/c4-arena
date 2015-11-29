@@ -37,8 +37,8 @@ class NeuralQ():
         self.save_interval = save_interval
         self.epoch = 0
         self.replay = []
-        self.memory_size = 100
-        self.batch_size = 50
+        self.memory_size = 1000
+        self.batch_size = 500
 
         self.models = {}
         for side in [1,2]:
