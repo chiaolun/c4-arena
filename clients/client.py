@@ -113,7 +113,7 @@ while 1:
             if winner == you:
                 nwins += 1
             print "You have", ("won!" if winner == you else "lost!")
-            print "Win ratio:{0}/{1}".format(nwins,ngames)
+            print "Win ratio: {0}/{1} {2:3d}%".format(nwins,ngames,int(round(nwins*100./ngames)))
             if ngames > 500:
                 print "Resetting win counter"
                 nwins = 0
