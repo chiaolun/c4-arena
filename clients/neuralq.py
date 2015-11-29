@@ -82,8 +82,6 @@ class NeuralQ():
             action = (np.nanargmax(qval_allowed))
 
         def observe_reward(reward=0, new_state=None):
-            if side != 1:
-                reward *= -1
             if new_state:
                 new_state = standardize(new_state,side)
                 new_state = np.array(new_state)
