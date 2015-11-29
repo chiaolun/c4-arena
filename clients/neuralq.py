@@ -13,13 +13,13 @@ state_dim = ncols * nrows
 
 # http://outlace.com/Reinforcement-Learning-Part-3/
 
-def standardize(state):
+def standardize(state,side):
     N = len(state)
     standard_state = np.zeros((N,2))
     for i, x in enumerate(state):
         if x == 0:
             continue
-        elif x == 1:
+        elif x == side:
             standard_state[i,0] = 1.
         else:
             standard_state[i,1] = 1.
@@ -37,8 +37,8 @@ class NeuralQ():
         self.save_interval = save_interval
         self.epoch = 0
         self.replay = []
-        self.memory_size = 1000
-        self.batch_size = 500
+        self.memory_size = 200
+        self.batch_size = 100
 
         self.models = {}
         for side in [1,2]:
@@ -65,7 +65,7 @@ class NeuralQ():
         memory_size = self.memory_size
         batch_size = self.batch_size
 
-        state = standardize(state)
+        state = standardize(state,side)
         state = np.array(state)
         #We are in state S
         #Let's run our Q function on S to get Q values for all possible actions
@@ -78,32 +78,32 @@ class NeuralQ():
 
         if (random.random() < epsilon): #choose random action
             action = np.random.choice(valids)
-        elif side == 1: #choose best action from Q(s,a) values
-            action = (np.nanargmax(qval_allowed))
         else:
-            action = (np.nanargmin(qval_allowed))
+            action = (np.nanargmax(qval_allowed))
 
         def observe_reward(reward=0, new_state=None):
             if side != 1:
                 reward *= -1
             if new_state:
-                new_state = standardize(new_state)
+                new_state = standardize(new_state,side)
                 new_state = np.array(new_state)
 
-            self.replay.append((state, action, reward, new_state))
-            if len(self.replay) > memory_size:
-                self.replay.pop(0)
-            else:
+            self.replay.append((side, state, action, reward, new_state))
+
+            if len(self.replay) <= memory_size:
                 # Don't start training until you have enough samples
                 return
 
+            self.replay.pop(0)
+
             minibatch = random.sample(self.replay, batch_size)
 
-            X_train = []
-            y_train = []
+            X_train = {1 : [], 2 : []}
+            y_train = {1 : [], 2 : []}
 
-            for old_state, action0, reward, new_state in minibatch:
-                old_qval = model.predict(old_state, batch_size=1)
+            for side0, old_state, action0, reward, new_state in minibatch:
+                model0 = self.models[side0]
+                old_qval = model0.predict(old_state, batch_size=1)
 
                 # This function observes the reward after the move chosen
                 y = np.zeros((1,ncols))
@@ -116,20 +116,33 @@ class NeuralQ():
                     # Non-terminal state
 
                     #Get max_Q(S',a)
-                    newQ = model.predict(new_state, batch_size=1)
-                    maxQ = np.max(newQ)
+                    newQ = model0.predict(new_state, batch_size=1)
+                    qval_allowed = np.empty(newQ.shape)
+                    qval_allowed[:] = np.NAN
+                    valids = valid_columns(old_state)
+                    for i in valids:
+                        qval_allowed[0,i] = newQ[0,i]
+                    maxQ = np.nanmax(qval_allowed)
 
                     update = (reward + (gamma * maxQ))
 
                 y[0][action0] = update #target output
-                X_train.append(old_state.reshape(state_dim*2,))
-                y_train.append(y.reshape(ncols,))
+                X_train[side0].append(old_state.reshape(state_dim*2,))
+                y_train[side0].append(y.reshape(ncols,))
 
-            X_train = np.array(X_train)
-            y_train = np.array(y_train)
-            model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=1, verbose=1)
+            for side0 in [1,2]:
+                model0 = self.models[side0]
+                X_train0 = np.array(X_train[side0])
+                y_train0 = np.array(y_train[side0])
+                model0.fit(X_train0, y_train0, batch_size=len(X_train0),
+                           nb_epoch=1, verbose=1)
+
             self.epoch += 1
             if self.epoch % self.save_interval == 0:
-                model.save_weights("model_{side}.dat".format(side=side), overwrite=True)
+                for side0 in [1,2]:
+                    (self
+                     .models[side0]
+                     .save_weights("model_{side}.dat".format(side=side0),
+                                   overwrite=True))
 
         return action, observe_reward
