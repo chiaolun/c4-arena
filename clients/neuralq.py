@@ -31,7 +31,7 @@ def valid_columns(state):
                    for i in range(j * nrows, (j + 1) * nrows))]
 
 class NeuralQ():
-    def __init__(self, epsilon = 0.01, gamma = 1., save_interval = 100):
+    def __init__(self, epsilon = 0.01, gamma = 1., save_interval = 500):
         self.epsilon = epsilon
         self.gamma = gamma
         self.save_interval = save_interval
@@ -44,14 +44,6 @@ class NeuralQ():
         for side in [1,2]:
             model = Sequential()
             model.add(Dense(60, init='lecun_uniform', input_shape=(state_dim*2,)))
-            model.add(Activation('relu'))
-            # model.add(Dropout(0.5))
-
-            model.add(Dense(40, init='lecun_uniform'))
-            model.add(Activation('relu'))
-            # model.add(Dropout(0.5))
-
-            model.add(Dense(20, init='lecun_uniform'))
             model.add(Activation('relu'))
             # model.add(Dropout(0.5))
 
