@@ -40,3 +40,9 @@
                          (put! ch-in {:type "move" :move (.makeDecision search c4-state)}))
                        (recur)))))
     {:id "aima" :ch-in ch-in :ch-out ch-out}))
+
+(gen-class
+ :name c4-arena.players.C4TrompGame
+ :prefix "c4tromp-")
+
+(defn c4tromp-toString [this] "Hello World!")
