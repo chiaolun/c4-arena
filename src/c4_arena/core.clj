@@ -137,7 +137,9 @@
                       (= against "random")
                       (spawn-random-player)
                       (= against "aima")
-                      (spawn-aima-player))
+                      (spawn-aima-player 0.5)
+                      (= against "aima10")
+                      (spawn-aima-player 10.))
                     (->> (vals @awaiting)
                          (remove
                           (fn [{other-id :id}]
@@ -203,7 +205,7 @@
                      "Only start messages allowed in current state"
                      (string/blank? id)
                      "You need to include an id"
-                     (#{"random" "aima"} id)
+                     (#{"random" "aima" "aima10"} id)
                      (format "\"%s\" is a reserved id used for a reference player" id))]
         (if-not reason
           (>! @matcher (assoc player :id id :against against))

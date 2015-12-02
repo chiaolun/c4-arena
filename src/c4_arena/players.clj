@@ -24,10 +24,10 @@
                        (recur)))))
     {:id "random" :ch-in ch-in :ch-out ch-out}))
 
-(defn spawn-aima-player []
+(defn spawn-aima-player [time-to-think]
   (let [ch-in (chan) ch-out (chan)
         c4-state (ConnectFourState. nrows ncols)
-        search (ConnectFourAIPlayer. (ConnectFourGame.) 0.5)]
+        search (ConnectFourAIPlayer. (ConnectFourGame.) time-to-think)]
     (go-loop []
       (when-let [msg (<! ch-out)]
         (condp contains? (:type msg)
