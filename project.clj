@@ -21,8 +21,6 @@
   :plugins [[cider/cider-nrepl "0.9.1"]
             [migratus-lein "0.2.0"]]
   :main ^:skip-aot c4-arena.core
-  :aot [c4-arena.players.C4TrompState]
-  :java-source-paths ["java"]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
   :migratus {:store :database
