@@ -137,7 +137,7 @@
                       (= against "random")
                       (spawn-random-player)
                       (= against "aima")
-                      (spawn-aima-player 0.5)
+                      (spawn-aima-player 1.)
                       (= against "aima10")
                       (spawn-aima-player 10.)
                       (= against "perfect")
