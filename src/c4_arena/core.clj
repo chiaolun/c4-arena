@@ -19,7 +19,7 @@
    [cheshire.core :refer [parse-string generate-string]]
    [c4-arena
     [c4-rules :refer [ncols nrows make-move get-winner]]
-    [players :refer [spawn-random-player spawn-aima-player]]]))
+    [players :refer [spawn-random-player spawn-aima-player spawn-perfect-player]]]))
 
 (def db
   {:classname "org.sqlite.JDBC"
@@ -139,7 +139,9 @@
                       (= against "aima")
                       (spawn-aima-player 0.5)
                       (= against "aima10")
-                      (spawn-aima-player 10.))
+                      (spawn-aima-player 10.)
+                      (= against "perfect")
+                      (spawn-perfect-player))
                     (->> (vals @awaiting)
                          (remove
                           (fn [{other-id :id}]
@@ -205,7 +207,7 @@
                      "Only start messages allowed in current state"
                      (string/blank? id)
                      "You need to include an id"
-                     (#{"random" "aima" "aima10"} id)
+                     (#{"random" "aima" "aima10" "perfect"} id)
                      (format "\"%s\" is a reserved id used for a reference player" id))]
         (if-not reason
           (>! @matcher (assoc player :id id :against against))
