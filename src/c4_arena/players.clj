@@ -72,7 +72,7 @@
 (defn spawn-perfect-player []
   (let [ch-in (chan) ch-out (chan)
         c4-state (tromp-terminated-connect4)
-        search (AlphaBetaSearch. (ConnectFourGame.))]
+        search (ConnectFourAIPlayer. (ConnectFourGame.) 1.)]
     (go-loop []
       (when-let [msg (<! ch-out)]
         (condp contains? (:type msg)
