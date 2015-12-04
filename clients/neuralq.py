@@ -15,20 +15,23 @@ state_dim = ncols * nrows
 
 def standardize(state,side):
     N = len(state)
-    standard_state = np.zeros((N,2))
+    standard_state = np.zeros((N,3))
     for i, x in enumerate(state):
         if x == 0:
-            continue
-        elif x == side:
             standard_state[i,0] = 1.
-        else:
+            break
+        elif x == side:
             standard_state[i,1] = 1.
-    return standard_state.reshape(1,state_dim*2)
+        else:
+            standard_state[i,2] = 1.
+    return standard_state.reshape(1,state_dim*3)
 
 def valid_columns(state):
-    return [j for j in range(ncols)
-            if any(all([state[0, 2 * i + k] == 0 for k in range(2)])
-                   for i in range(j * nrows, (j + 1) * nrows))]
+    for j in range(ncols):
+        for i in range(j * nrows, (j + 1) * nrows):
+            if state[0, 3 * i] == 0:
+                yield j
+                break
 
 class NeuralQ():
     def __init__(self, epsilon = 0.01, gamma = 1., save_interval = 500):
@@ -43,12 +46,12 @@ class NeuralQ():
         self.models = {}
         for side in [1,2]:
             model = Sequential()
-            model.add(Dense(800, init='lecun_uniform', input_shape=(state_dim*2,)))
+            model.add(Dense(200, init='lecun_uniform', input_shape=(state_dim*3,)))
             model.add(Activation('relu'))
             # model.add(Dropout(0.5))
 
-            # model.add(Dense(20, init='lecun_uniform'))
-            # model.add(Activation('relu'))
+            model.add(Dense(100, init='lecun_uniform'))
+            model.add(Activation('relu'))
             # model.add(Dropout(0.5))
 
             model.add(Dense(ncols, init='lecun_uniform'))
@@ -77,7 +80,7 @@ class NeuralQ():
         qval = model.predict(state, batch_size=1)
         qval_allowed = np.empty(qval.shape)
         qval_allowed[:] = np.NAN
-        valids = valid_columns(state)
+        valids = list(valid_columns(state))
         for i in valids:
             qval_allowed[0,i] = qval[0,i]
 
@@ -122,7 +125,7 @@ class NeuralQ():
                     newQ = model0.predict(new_state0, batch_size=1)
                     qval_allowed = np.empty(newQ.shape)
                     qval_allowed[:] = np.NAN
-                    valids = valid_columns(old_state0)
+                    valids = list(valid_columns(old_state0))
                     for i in valids:
                         qval_allowed[0,i] = newQ[0,i]
                     maxQ = np.nanmax(qval_allowed)
@@ -130,7 +133,7 @@ class NeuralQ():
                     update = (reward0 + (gamma * maxQ))
 
                 y[0][action0] = update #target output
-                X_train[side0].append(old_state0.reshape(state_dim*2,))
+                X_train[side0].append(old_state0.reshape(state_dim*3,))
                 y_train[side0].append(y.reshape(ncols,))
 
             for side0 in [1,2]:
