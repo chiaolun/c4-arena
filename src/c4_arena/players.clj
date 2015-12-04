@@ -12,7 +12,9 @@
    [aima.core.environment.connectfour
     ConnectFourState ConnectFourGame ConnectFourAIPlayer]
    [aima.core.search.adversarial
-    AlphaBetaSearch]))
+    AdversarialSearch AlphaBetaSearch MinimaxSearch]))
+
+(set! *warn-on-reflection* true)
 
 (defn spawn-random-player []
   (let [ch-in (chan) ch-out (chan)]
@@ -40,39 +42,66 @@
           #{"ignored"} (tb/error "Invalid move, terminating")
           #{"state"} (let [{:keys [state turn you last-move]} msg]
                        (when last-move
-                         (.dropDisk c4-state last-move))
+                         (.dropDisk #^ConnectFourState c4-state last-move))
                        (when (= turn you)
-                         (put! ch-in {:type "move" :move (.makeDecision search c4-state)}))
+                         (put! ch-in {:type "move" :move (.makeDecision #^AdversarialSearch search c4-state)}))
                        (recur)))))
     {:id "aima" :ch-in ch-in :ch-out ch-out}))
 
-(defn tromp-str [^ConnectFourState state]
-  (->> (for [col (range (.getCols state))
-             row (reverse (range (.getRows state)))]
-         (case (.getPlayerNum state row col)
-           0 "b" 1 "x" 2 "o"))
-       doall (apply str)))
+(defn tromp-strs [^ConnectFourState state]
+  (let [crange (range 7)]
+    (for [cols [crange (reverse crange)]]
+      (->> (for [col cols
+                 row (reverse (range (.getRows state)))]
+             (case (.getPlayerNum state row col)
+               0 "b" 1 "x" 2 "o"))
+           doall (apply str)))))
 
 (defonce tromp-db
-  (with-open [in-file (io/reader (io/resource "tromp.csv"))]
-    (->> (csv/read-csv in-file)
-         (map (fn [row]
-                [(apply str (subvec row 0 (dec (count row))))
-                 (case (last row)
-                   "win" 1.0 "loss" 0.0 "draw" 0.5)]))
-         (into {}))))
+  (->>["tromp.csv" "tromp_extras.csv"]
+      (mapcat
+       (fn [file0]
+         (with-open [in-file (io/reader (io/resource file0))]
+           (->> (csv/read-csv in-file)
+                (map
+                 (fn [row]
+                   [(apply str (subvec row 0 (dec (count row))))
+                    (case (last row)
+                      "win" 1.0 "loss" 0.0 "draw" 0.5)]))
+                doall))))
+      (into {})))
 
-(defn tromp-terminated-connect4 []
-  (proxy [ConnectFourState] [6 7]
-    (getUtility []
-      (or
-       (-> this tromp-str tromp-db)
-       (proxy-super getUtility)))))
+(comment
+  ;; This prints out all the states not in the database
+  (.makeDecision
+   (AlphaBetaSearch. (ConnectFourGame.))
+   (let [seen (atom #{})]
+     (proxy [ConnectFourState] [6 7]
+       (getUtility []
+         (or
+          (when (= (.getMoves this) 8)
+            (let [boards (vec (tromp-strs this))]
+              (if-let [score (some tromp-db boards)]
+                score
+                (when (< (proxy-super getUtility) -1e-5)
+                  (when-not (some @seen boards)
+                    (println (first boards))
+                    (spit "unknowns" (str (first boards) "\n") :append true)
+                    (swap! seen conj (first boards)))
+                  0.5))))
+          (proxy-super getUtility)))))))
 
 (defn spawn-perfect-player []
   (let [ch-in (chan) ch-out (chan)
-        c4-state (tromp-terminated-connect4)
-        search (ConnectFourAIPlayer. (ConnectFourGame.) 1.)]
+        c4-state (proxy [ConnectFourState] [6 7]
+                   (getUtility []
+                     (let [^ConnectFourState this this]
+                       (or
+                        (when (= (.getMoves this) 8)
+                          (some->> this tromp-strs (some tromp-db)))
+                        (proxy-super getUtility)))))
+        ;; search (ConnectFourAIPlayer. (ConnectFourGame.) 1.)
+        search (AlphaBetaSearch. (ConnectFourGame.))]
     (go-loop []
       (when-let [msg (<! ch-out)]
         (condp contains? (:type msg)
@@ -80,8 +109,8 @@
           #{"ignored"} (tb/error "Invalid move, terminating")
           #{"state"} (let [{:keys [state turn you last-move]} msg]
                        (when last-move
-                         (.dropDisk c4-state last-move))
+                         (.dropDisk #^ConnectFourState c4-state last-move))
                        (when (= turn you)
-                         (put! ch-in {:type "move" :move (.makeDecision search c4-state)}))
+                         (put! ch-in {:type "move" :move (.makeDecision #^AdversarialSearch search c4-state)}))
                        (recur)))))
     {:id "aima" :ch-in ch-in :ch-out ch-out}))
