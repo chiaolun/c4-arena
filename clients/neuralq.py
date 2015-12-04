@@ -140,7 +140,7 @@ class NeuralQ():
                 model0 = self.models[side0]
                 X_train0 = np.array(X_train[side0])
                 y_train0 = np.array(y_train[side0])
-                model0.train_on_batch(X_train0, y_train0, verbose=1)
+                model0.train_on_batch(X_train0, y_train0)
 
             self.epoch += 1
             if self.epoch % self.save_interval == 0:
