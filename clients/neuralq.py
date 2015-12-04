@@ -29,7 +29,7 @@ def standardize(state,side):
 def valid_columns(state):
     for j in range(ncols):
         for i in range(j * nrows, (j + 1) * nrows):
-            if state[0, 3 * i] == 0:
+            if state[0, 3 * i] == 1:
                 yield j
                 break
 
