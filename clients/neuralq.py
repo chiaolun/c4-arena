@@ -57,9 +57,9 @@ class NeuralQ():
             model.add(Dense(ncols, init='lecun_uniform'))
             model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
 
-            rms = RMSprop()
-            # sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
-            model.compile(loss='mse', optimizer=rms)
+            # rms = RMSprop()
+            sgd = SGD(lr=0.1, decay=0, momentum=0.1, nesterov=True)
+            model.compile(loss='mse', optimizer=sgd)
 
             if os.path.isfile("model_{side}.dat".format(side=side)):
                 model.load_weights("model_{side}.dat".format(side=side))
