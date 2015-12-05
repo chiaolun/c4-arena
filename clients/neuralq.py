@@ -102,8 +102,7 @@ class NeuralQ():
 
             self.replay.pop(0)
 
-            # minibatch = random.sample(self.replay, batch_size)
-            minibatch = self.replay
+            minibatch = random.sample(self.replay, batch_size)
 
             X_train = {1 : [], 2 : []}
             y_train = {1 : [], 2 : []}
