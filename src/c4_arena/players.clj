@@ -119,3 +119,15 @@
                          (put! ch-in {:type "move" :move (.makeDecision #^AdversarialSearch search c4-state)}))
                        (recur)))))
     {:id "aima" :ch-in ch-in :ch-out ch-out}))
+
+(defn get-player [name0]
+  (case name0
+    "random"
+    (spawn-random-player)
+    "aima"
+    (spawn-aima-player 1.)
+    "aima10"
+    (spawn-aima-player 10.)
+    "perfect"
+    (spawn-perfect-player)
+    nil))

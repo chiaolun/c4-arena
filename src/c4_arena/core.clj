@@ -19,7 +19,7 @@
    [cheshire.core :refer [parse-string generate-string]]
    [c4-arena
     [c4-rules :refer [ncols nrows make-move get-winner]]
-    [players :refer [spawn-random-player spawn-aima-player spawn-perfect-player]]]))
+    [players :refer [get-player]]]))
 
 (def db
   {:classname "org.sqlite.JDBC"
@@ -144,15 +144,7 @@
 (defonce active-matches (atom #{}))
 (defn match-once [{:keys [id against] :as player0}]
   (if-let [player1 (or
-                    (cond
-                      (= against "random")
-                      (spawn-random-player)
-                      (= against "aima")
-                      (spawn-aima-player 1.)
-                      (= against "aima10")
-                      (spawn-aima-player 10.)
-                      (= against "perfect")
-                      (spawn-perfect-player))
+                    (get-player against)
                     (->> (vals @awaiting)
                          (remove
                           (fn [{other-id :id}]
