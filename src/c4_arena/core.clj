@@ -33,7 +33,7 @@
 (defonce uid-counter (atom 0))
 
 (declare initial-loop)
-(defn game-loop [players]
+(defn game-loop [players & {:keys [observer]}]
   (let [players (shuffle players)
         ch-ins (mapv :ch-in players)
         ch-outs (mapv :ch-out players)
@@ -58,14 +58,16 @@
                            true)))
         notify (fn [ch]
                  (let [player-index (.indexOf ch-outs ch)
-                       player-index (when (not= player-index -1)
+                       player-index (when-not (= player-index -1)
                                       player-index)]
                    (put! ch (cond-> {:type "state"
                                      :turn (inc (or @turn -1))
                                      :state @state}
                               player-index
                               (assoc :you (inc player-index))
-                              (@last-move player-index)
+                              (and
+                               player-index
+                               (@last-move player-index))
                               (assoc :last-move
                                      (let [lm (@last-move player-index)]
                                        (swap! last-move assoc player-index nil)
@@ -78,42 +80,46 @@
       ;; Start out by notifying both sides of the board state
       (doseq [ch-out ch-outs]
         (notify ch-out))
+      (when observer
+        (notify observer))
       ;; During the game
       (loop []
         (when-let [[{:keys [type] :as msg} ch-in] (alts! ch-ins)]
           (let [actor (.indexOf ch-ins ch-in)
                 ch-out (ch-outs actor)]
-            (if-not msg
-              ;; Cleanup because someone disconnected
-              (doseq [{ch-out0 :ch-out :as player0} players
-                      :when (not= ch-out ch-out0)]
-                (notify ch-out0)
-                (put! ch-out0 {:type "disconnected"})
-                (initial-loop player0))
-              (let [reason (cond
-                             (not (#{"state_request" "move"} type))
-                             "Unknown message type"
-                             (= type "state_request") nil
-                             (not= @turn actor)
-                             "Not your turn"
-                             ;; Move gets processed here via
-                             ;; side-effect (boo!)
-                             (not (process-move (:move msg)))
-                             "Invalid move")]
-                (cond
-                  reason
-                  (put! ch-out {:type "ignored" :msg msg :reason reason})
-                  (= type "state_request")
-                  (notify ch-out)
-                  :else
-                  (doseq [ch-out ch-outs]
-                    (notify ch-out)))
-                (if-not @winner
-                  (recur)
-                  ;; Cleanup because someone won
-                  (doseq [{ch-out0 :ch-out :as player0} players]
-                    (put! ch-out0 {:type "end"})
-                    (initial-loop player0)))))))))))
+            (or
+             (when-not msg
+               ;; Cleanup because someone disconnected
+               (doseq [{ch-out0 :ch-out :as player0} players
+                       :when (not= ch-out ch-out0)]
+                 (notify ch-out0)
+                 (put! ch-out0 {:type "disconnected"})
+                 (initial-loop player0)))
+             (when (= type "state_request")
+               (notify ch-out))
+             (when-let [reason (cond
+                                 (not (#{"move"} type))
+                                 "Unknown message type"
+                                 (not= @turn actor)
+                                 "Not your turn"
+                                 ;; Move gets processed here via
+                                 ;; side-effect (boo!)
+                                 (not (process-move (:move msg)))
+                                 "Invalid move")]
+               (put! ch-out {:type "ignored" :msg msg :reason reason}))
+             (do
+               (when observer
+                 (notify observer))
+               (doseq [ch-out ch-outs]
+                 (notify ch-out))))
+            (if-not @winner
+              (recur)
+              ;; Cleanup because someone won
+              (doseq [{ch-out0 :ch-out :as player0} players]
+                (put! ch-out0 {:type "end"})
+                (initial-loop player0))))))
+      (when observer
+        (async/close! observer)))))
 
 (defn await-loop [{:keys [waiter] :as player}]
   (go-loop []
