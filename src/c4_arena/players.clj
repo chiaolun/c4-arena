@@ -7,7 +7,7 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [c4-arena
-    [c4-rules :refer [nrows ncols]]])
+    [c4-rules :refer [nrows ncols move-allowed?]]])
   (:import
    [aima.core.environment.connectfour
     ConnectFourState ConnectFourGame ConnectFourAIPlayer]
@@ -27,7 +27,12 @@
                          (recur))
           #{"state"} (let [{:keys [state turn you]} msg]
                        (when (= turn you)
-                         (put! ch-in {:type "move" :move (rand-int ncols)}))
+                         (put! ch-in
+                               {:type "move"
+                                :move (->> (range ncols)
+                                           (filter
+                                            (partial move-allowed? state))
+                                           rand-nth)}))
                        (recur)))))
     {:id "random" :ch-in ch-in :ch-out ch-out}))
 

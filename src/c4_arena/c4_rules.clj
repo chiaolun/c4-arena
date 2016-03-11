@@ -4,12 +4,15 @@
 (def nrows 6)
 (def n-to-win 4)
 
+(defn move-allowed? [state-val move]
+  (and
+   (<= 0 move (dec ncols))
+   (->> (range (* move nrows) (* (inc move) nrows))
+        (filter (fn [i] (= (state-val i) 0)))
+        first)))
+
 (defn make-move [state-val move side]
-  (when-let [i (and
-                (<= 0 move (dec ncols))
-                (->> (range (* move nrows) (* (inc move) nrows))
-                     (filter (fn [i] (= (state-val i) 0)))
-                     first))]
+  (when-let [i (move-allowed? state-val move)]
     [(assoc state-val i side) i]))
 
 (defn get-winner [state-val i]
