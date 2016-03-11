@@ -57,18 +57,23 @@
                            (reset! last-move [move move])
                            true)))
         notify (fn [ch]
-                 (put! ch (cond->
-                              {:type "state"
-                               :turn (inc (or @turn -1))
-                               :you (inc (.indexOf ch-outs ch))
-                               :state @state}
-                            (@last-move (.indexOf ch-outs ch))
-                            (assoc :last-move (@last-move (.indexOf ch-outs ch)))
-                            @winner
-                            (assoc
-                             :winner (inc @winner)
-                             :turn 0)))
-                 (swap! last-move assoc (.indexOf ch-outs ch) nil))]
+                 (let [player-index (.indexOf ch-outs ch)
+                       player-index (when (not= player-index -1)
+                                      player-index)]
+                   (put! ch (cond-> {:type "state"
+                                     :turn (inc (or @turn -1))
+                                     :state @state}
+                              player-index
+                              (assoc :you (inc player-index))
+                              (@last-move player-index)
+                              (assoc :last-move
+                                     (let [lm (@last-move player-index)]
+                                       (swap! last-move assoc player-index nil)
+                                       lm))
+                              @winner
+                              (assoc
+                               :winner (inc @winner)
+                               :turn 0)))))]
     (go
       ;; Start out by notifying both sides of the board state
       (doseq [ch-out ch-outs]
