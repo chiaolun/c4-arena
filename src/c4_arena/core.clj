@@ -18,7 +18,8 @@
    [cider.nrepl :refer [cider-nrepl-handler]]
    [cheshire.core :refer [parse-string generate-string]]
    [c4-arena
-    [c4-rules :refer [ncols nrows make-move get-winner state-from-moves]]
+    [c4-rules :refer [ncols nrows make-move get-winner]
+     :as c4-rules]
     [players :refer [get-player]]]))
 
 (def db
@@ -242,23 +243,22 @@
 
 ;;; Endpoint for returning agent-vs-agent games
 (defn game-record [player-types]
-  (let [observer (chan)
-        result (async/into [] observer)]
+  (let [observer (chan (async/buffer 1) (filter :winner))]
     (game-loop
      (map get-player player-types)
      :observer observer
      :no-shuffle? true)
-    result))
+    observer))
 
 (comment
   ;; Test board constructor
   (time
    (every?
     identity
-    (for [_ (range 10000)]
-      (let [row0 (last (async/<!! (game-record ["random" "random"])))]
-        (= (:state row0) (state-from-moves (:moves row0)))))))
-  "Elapsed time: 16024.190497 msecs")
+    (for [_ (range 5000)]
+      (let [row0 (async/<!! (game-record ["random" "random"]))]
+        (= (:state row0) (c4-rules/state-from-moves (:moves row0)))))))
+  "Elapsed time: 7817.753554 msecs")
 
 ;; ;;; Websocket connection for the firehose, carrying all state updates
 ;; ;;; for the whole server
