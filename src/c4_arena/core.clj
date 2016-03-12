@@ -253,6 +253,18 @@
      :no-shuffle? true)
     observer))
 
+
+
+(comment
+  (->> (range 1000000)
+       (pmap (fn [i]
+               (let [{:keys [winner moves]} (async/<!! (game-record ["random" "random"]))]
+                 (when (= 0 (mod i 1000))
+                   (println i))
+                 (apply str winner moves))))
+       (string/join "\n")
+       (spit "RvR.txt")))
+
 (comment
   (tp/profile
    :info
