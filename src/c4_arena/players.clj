@@ -3,6 +3,7 @@
    [clojure.core
     [async :as async :refer [go go-loop <! >! chan put! alt! alts!]]]
    [taoensso.timbre :as tb]
+   [taoensso.timbre.profiling :refer [defnp p]]
    [clojure [string :as string]]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
@@ -16,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn spawn-random-player []
+(defnp spawn-random-player []
   (let [ch-in (chan) ch-out (chan)]
     (go-loop []
       (when-let [msg (<! ch-out)]
@@ -36,7 +37,7 @@
                        (recur)))))
     {:id "random" :ch-in ch-in :ch-out ch-out}))
 
-(defn spawn-aima-player [time-to-think]
+(defnp spawn-aima-player [time-to-think]
   (let [ch-in (chan) ch-out (chan)
         c4-state (ConnectFourState. nrows ncols)
         search (ConnectFourAIPlayer. (ConnectFourGame.) time-to-think)]
@@ -53,7 +54,7 @@
                        (recur)))))
     {:id "aima" :ch-in ch-in :ch-out ch-out}))
 
-(defn tromp-strs [^ConnectFourState state]
+(defnp tromp-strs [^ConnectFourState state]
   (let [crange (range 7)]
     (for [cols [crange (reverse crange)]]
       (->> (for [col cols
@@ -96,7 +97,7 @@
                   0.5))))
           (proxy-super getUtility)))))))
 
-(defn spawn-perfect-player []
+(defnp spawn-perfect-player []
   (let [ch-in (chan) ch-out (chan)
         c4-state (proxy [ConnectFourState] [6 7]
                    (getUtility []
@@ -120,7 +121,7 @@
                        (recur)))))
     {:id "aima" :ch-in ch-in :ch-out ch-out}))
 
-(defn get-player [name0]
+(defnp get-player [name0]
   (case name0
     "random"
     (spawn-random-player)

@@ -1,21 +1,25 @@
-(ns c4-arena.c4-rules)
+(ns c4-arena.c4-rules
+  (:require
+   [taoensso.timbre.profiling :refer [defnp]]))
+
+(set! *warn-on-reflection* true)
 
 (def ncols 7)
 (def nrows 6)
 (def n-to-win 4)
 
-(defn move-allowed? [state-val move]
-  (and
-   (<= 0 move (dec ncols))
-   (->> (range (* move nrows) (* (inc move) nrows))
-        (filter (fn [i] (= (state-val i) 0)))
-        first)))
+(defnp move-allowed? [state-val move]
+  (= 0 (state-val (dec (* (inc move) nrows)))))
 
-(defn make-move [state-val move side]
-  (when-let [i (move-allowed? state-val move)]
+(defnp make-move [state-val move side]
+  (when-let [i (and
+                (<= 0 move (dec ncols))
+                (->> (range (* move nrows) (* (inc move) nrows))
+                     (filter (fn [i] (= (state-val i) 0)))
+                     first))]
     [(assoc state-val i side) i]))
 
-(defn state-from-moves [moves]
+(defnp state-from-moves [moves]
   (->> moves
        (reduce
         (fn [{:keys [state side] :as input} move]
@@ -26,7 +30,7 @@
         {:state (vec (repeat (* ncols nrows) 0)) :side 1})
        :state))
 
-(defn states-from-moves [moves]
+(defnp states-from-moves [moves]
   (->> moves
        (reductions
         (fn [{:keys [state side] :as input} move]
@@ -37,7 +41,7 @@
         {:state (vec (repeat (* ncols nrows) 0)) :side 1})
        (map :state)))
 
-(defn get-winner [state-val i]
+(defnp get-winner [state-val i]
   (let [cand (state-val i)]
     (cond
       ;; Check for winner

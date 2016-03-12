@@ -6,6 +6,8 @@
    [clojure
     [string :as string]]
    [taoensso.timbre :as tb]
+   [taoensso.timbre.profiling :as tp
+    :refer [defnp p]]
    [clojure.java.jdbc :as sql]
    [manifold
     [stream :as st]
@@ -21,6 +23,8 @@
     [c4-rules :refer [ncols nrows make-move get-winner]
      :as c4-rules]
     [players :refer [get-player]]]))
+
+(set! *warn-on-reflection* true)
 
 (def db
   {:classname "org.sqlite.JDBC"
@@ -60,31 +64,29 @@
                            (reset! last-move [move move])
                            (swap! moves conj move)
                            true)))
-        notify (fn [ch]
-                 (let [player-index (.indexOf ch-outs ch)
-                       player-index (when-not (= player-index -1)
-                                      player-index)]
-                   (put! ch (cond-> {:type "state"
-                                     :turn (inc (or @turn -1))
-                                     :moves @moves
-                                     :state @state}
-                              player-index
-                              (assoc :you (inc player-index))
-                              (and
+        notify (fn [ch & [player-index]]
+                 (p :notify
+                    (put! ch (cond-> {:type "state"
+                                      :turn (inc (or @turn -1))
+                                      :moves @moves
+                                      :state @state}
                                player-index
-                               (@last-move player-index))
-                              (assoc :last-move
-                                     (let [lm (@last-move player-index)]
-                                       (swap! last-move assoc player-index nil)
-                                       lm))
-                              @winner
-                              (assoc
-                               :winner (inc @winner)
-                               :turn 0)))))]
+                               (assoc :you (inc player-index))
+                               (and
+                                player-index
+                                (@last-move player-index))
+                               (assoc :last-move
+                                      (let [lm (@last-move player-index)]
+                                        (swap! last-move assoc player-index nil)
+                                        lm))
+                               @winner
+                               (assoc
+                                :winner (inc @winner)
+                                :turn 0)))))]
     (go
       ;; Start out by notifying both sides of the board state
-      (doseq [ch-out ch-outs]
-        (notify ch-out))
+      (dotimes [i 2]
+        (notify (ch-outs i) i))
       (when observer
         (notify observer))
       ;; During the game
@@ -95,13 +97,14 @@
             (or
              (when-not msg
                ;; Cleanup because someone disconnected
-               (doseq [{ch-out0 :ch-out :as player0} players
+               (doseq [i (range 2)
+                       :let [{ch-out0 :ch-out :as player0} (players i)]
                        :when (not= ch-out ch-out0)]
-                 (notify ch-out0)
+                 (notify ch-out0 i)
                  (put! ch-out0 {:type "disconnected"})
                  (initial-loop player0)))
              (when (= type "state_request")
-               (notify ch-out))
+               (notify ch-out actor))
              (when-let [reason (cond
                                  (not (#{"move"} type))
                                  "Unknown message type"
@@ -115,8 +118,8 @@
              (do
                (when observer
                  (notify observer))
-               (doseq [ch-out ch-outs]
-                 (notify ch-out))))
+               (dotimes [i 2]
+                 (notify (ch-outs i) i))))
             (if-not @winner
               (recur)
               ;; Cleanup because someone won
@@ -251,14 +254,29 @@
     observer))
 
 (comment
-  ;; Test board constructor
-  (time
+  (tp/profile
+   :info
+   :random-games
    (every?
     identity
     (for [_ (range 5000)]
       (let [row0 (async/<!! (game-record ["random" "random"]))]
         (= (:state row0) (c4-rules/state-from-moves (:moves row0)))))))
-  "Elapsed time: 7817.753554 msecs")
+  "
+    16-Mar-12 09:14:47 chiao-vbox2 INFO [c4-arena.core] - Profiling: :c4-arena.core/random-games
+                                     Id      nCalls       Min        Max       MAD      Mean   Time% Time
+                  :c4-arena.core/notify     335,070     231ns     35.0ms     8.0μs     5.0μs      19 1.6s
+                       :timbre/stats-gc          10    68.0ms    149.0ms    29.0ms    96.0ms      12 964.0ms
+          :c4-arena.c4-rules/get-winner     106,690     4.0μs     11.0ms     3.0μs     7.0μs       9 760.0ms
+    :c4-arena.c4-rules/state-from-moves       5,000    12.0μs     80.0ms    38.0μs    55.0μs       3 277.0ms
+           :c4-arena.c4-rules/make-move     213,380     462ns      7.0ms     384ns     976ns       3 208.0ms
+       :c4-arena.c4-rules/move-allowed?     746,830      82ns    648.0μs      25ns     115ns       1 86.0ms
+           :c4-arena.players/get-player      10,000     936ns     10.0ms     3.0μs     4.0μs       0 35.0ms
+  :c4-arena.players/spawn-random-player      10,000     198ns     10.0ms     2.0μs     2.0μs       0 21.0ms
+                             Clock Time                                                          100 8.2s
+                         Accounted Time                                                           47 3.9s
+  true
+")
 
 ;; ;;; Websocket connection for the firehose, carrying all state updates
 ;; ;;; for the whole server
