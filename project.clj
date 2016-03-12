@@ -22,11 +22,13 @@
             [migratus-lein "0.2.0"]]
   :main ^:skip-aot c4-arena.core
   :target-path "target/%s"
-  ;; :jvm-opts [
-  ;;            "-Xms2g"
-  ;;            "-Xmx2g"
-  ;;            "-XX:MetaspaceSize=200m"
-  ;;            ]
+  :jvm-opts [
+             ;; "-XX:+UnlockCommercialFeatures"
+             ;; "-XX:+FlightRecorder"
+             ;; "-Xms2g"
+             ;; "-Xmx2g"
+             ;; "-XX:MetaspaceSize=200m"
+             ]
   :profiles {:uberjar {:aot :all}}
   :migratus {:store :database
              :migration-dir "migrations"
