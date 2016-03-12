@@ -15,6 +15,17 @@
   (when-let [i (move-allowed? state-val move)]
     [(assoc state-val i side) i]))
 
+(defn state-from-moves [moves]
+  (:state
+   (reduce
+    (fn [{:keys [state side] :as input} move]
+      (if-let [state1 (first (make-move state move side))]
+        (let [side1 ({1 2 2 1} side)]
+          {:state state1 :side side1})
+        input))
+    {:state (vec (repeat (* ncols nrows) 0)) :side 1}
+    moves)))
+
 (defn get-winner [state-val i]
   (let [cand (state-val i)]
     (cond

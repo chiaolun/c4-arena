@@ -18,7 +18,7 @@
    [cider.nrepl :refer [cider-nrepl-handler]]
    [cheshire.core :refer [parse-string generate-string]]
    [c4-arena
-    [c4-rules :refer [ncols nrows make-move get-winner]]
+    [c4-rules :refer [ncols nrows make-move get-winner state-from-moves]]
     [players :refer [get-player]]]))
 
 (def db
@@ -33,14 +33,16 @@
 (defonce uid-counter (atom 0))
 
 (declare initial-loop)
-(defn game-loop [players & {:keys [observer]}]
-  (let [players (shuffle players)
+(defn game-loop [players & {:keys [observer no-shuffle?]}]
+  (let [players (if no-shuffle?
+                  players (shuffle players))
         ch-ins (mapv :ch-in players)
         ch-outs (mapv :ch-out players)
         state (atom (vec (repeat (* ncols nrows) 0)))
         last-move (atom {})
         turn (atom 0)
         winner (atom nil)
+        moves (atom [])
         process-move (fn [move]
                        ;; This function enforces the rules of
                        ;; connect-4. If a move is not valid, returns
@@ -55,6 +57,7 @@
                            (swap! turn #(- 1 %))
                            (reset! winner (get-winner @state i))
                            (reset! last-move [move move])
+                           (swap! moves conj move)
                            true)))
         notify (fn [ch]
                  (let [player-index (.indexOf ch-outs ch)
@@ -62,6 +65,7 @@
                                       player-index)]
                    (put! ch (cond-> {:type "state"
                                      :turn (inc (or @turn -1))
+                                     :moves @moves
                                      :state @state}
                               player-index
                               (assoc :you (inc player-index))
@@ -235,6 +239,26 @@
 (defn game-websocket [req]
   (let [s @(http/websocket-connection req)]
     (game-init s)))
+
+;;; Endpoint for returning agent-vs-agent games
+(defn game-record [player-types]
+  (let [observer (chan)
+        result (async/into [] observer)]
+    (game-loop
+     (map get-player player-types)
+     :observer observer
+     :no-shuffle? true)
+    result))
+
+(comment
+  ;; Test board constructor
+  (time
+   (every?
+    identity
+    (for [_ (range 10000)]
+      (let [row0 (last (async/<!! (game-record ["random" "random"])))]
+        (= (:state row0) (state-from-moves (:moves row0)))))))
+  "Elapsed time: 16024.190497 msecs")
 
 ;; ;;; Websocket connection for the firehose, carrying all state updates
 ;; ;;; for the whole server
