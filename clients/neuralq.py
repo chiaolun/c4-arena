@@ -73,7 +73,7 @@ class NeuralQ():
             ])
 
             if len(self.memory) > 100000:
-                for _ in range(100):
+                for _ in range(1):
                     indices = np.random.randint(
                         len(self.memory), size=500
                     )
@@ -102,7 +102,7 @@ class NeuralQ():
                         actions_batch,
                         rewards_batch,
                         state1s_batch,
-                        0.9,
+                        0.99,
                     )
                     self.error_den += 1
 
