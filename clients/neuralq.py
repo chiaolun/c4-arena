@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
-from keras.models import Sequential
-from keras.layers.core import Dense, Activation
-from keras.optimizers import RMSprop, SGD
+from c4_neural import (
+    moves_to_state,
+    flip_state,
+    load_network,
+    save_network,
+    compile_Q,
+    network_trainer,
+)
 import numpy as np
+import theano
 import random
-import os.path
+import cPickle
 
 ncols = 7
 nrows = 6
@@ -14,152 +20,102 @@ state_dim = ncols * nrows
 # http://outlace.com/Reinforcement-Learning-Part-3/
 
 
-def standardize(state, side):
-    N = len(state)
-    standard_state = np.zeros((N, 3))
-    for i, x in enumerate(state):
-        if x == 0:
-            standard_state[i, 0] = 1.
-            break
-        elif x == side:
-            standard_state[i, 1] = 1.
-        else:
-            standard_state[i, 2] = 1.
-    return standard_state.reshape(1, state_dim*3)
-
-
 def valid_columns(state):
     for j in range(ncols):
         for i in range(j * nrows, (j + 1) * nrows):
-            if state[0, 3 * i] == 1:
+            if state[i] == 0:
                 yield j
                 break
 
 
 class NeuralQ():
-    def __init__(self, epsilon=0.01, gamma=1., save_interval=500):
+    def __init__(self, epsilon=0.1):
+        network = load_network()
+        Q_fn = compile_Q(network)
+
+        def moves_to_move(state0, moves0):
+            Qs = Q_fn(np.array([flip_state(moves_to_state(moves0))]))[0]
+            return max([(Qs[i], i) for i in valid_columns(state0)])[1]
+
         self.epsilon = epsilon
-        self.gamma = gamma
-        self.save_interval = save_interval
-        self.epoch = 0
-        self.replay = []
-        self.memory_size = 200
-        self.batch_size = 100
+        self.network = network
+        self.trainer = network_trainer(network)
+        self.ms2m = moves_to_move
+        self.epochs = 0
+        self.memory = []
+        self.error_num = 0.
+        self.error_den = 0
+        try:
+            self.memory = cPickle.load(file("memory.pickle"))
+        except IOError:
+            pass
 
-        self.models = {}
-        for side in [1, 2]:
-            model = Sequential()
-            model.add(
-                Dense(400, init='lecun_uniform', input_shape=(state_dim*3,))
-            )
-            model.add(Activation('tanh'))
-            # model.add(Dropout(0.5))
-
-            # model.add(Dense(100, init='lecun_uniform'))
-            # model.add(Activation('relu'))
-            # # model.add(Dropout(0.5))
-
-            model.add(
-                Dense(ncols, init='lecun_uniform')
-            )
-            model.add(
-                Activation('linear')
-            )  # linear output so we can have range of real-valued outputs
-
-            rms = RMSprop()
-            # sgd = SGD(lr=0.1, decay=0, momentum=0.1, nesterov=True)
-            model.compile(loss='mse', optimizer=rms)
-
-            if os.path.isfile("model_{side}.dat".format(side=side)):
-                model.load_weights("model_{side}.dat".format(side=side))
-
-            self.models[side] = model
-
-    def get_move(self, state, side):
-        model = self.models[side]
-        gamma = self.gamma
-        epsilon = self.epsilon
-        memory_size = self.memory_size
-        batch_size = self.batch_size
-
-        state = standardize(state, side)
-        state = np.array(state)
-        # We are in state S
-        # Let's run our Q function on S to get
-        # Q values for all possible actions
-        qval = model.predict(state, batch_size=1)
-        qval_allowed = np.empty(qval.shape)
-        qval_allowed[:] = np.NAN
-        valids = list(valid_columns(state))
-        for i in valids:
-            qval_allowed[0, i] = qval[0, i]
-
-        if (random.random() < epsilon):  # choose random action
-            action = np.random.choice(valids)
+    def get_move(self, state, moves, side):
+        self.epochs += 1
+        if random.random() < self.epsilon:
+            action = random.choice(list(valid_columns(state)))
         else:
-            action = (np.nanargmax(qval_allowed))
+            action = self.ms2m(state, moves)
 
-        def observe_reward(reward=0, new_state=None):
-            if new_state:
-                new_state = standardize(new_state, side)
-                new_state = np.array(new_state)
+        state0 = flip_state(moves_to_state(moves))
 
-            self.replay.append((side, state, action, reward, new_state))
+        def observer(reward=None, moves=None):
+            if moves is not None:
+                state1 = flip_state(moves_to_state(moves))
+            else:
+                state1 = np.zeros_like(state0)
 
-            if len(self.replay) <= memory_size:
-                # Don't start training until you have enough samples
-                return
+            self.memory.append([
+                state0,
+                action,
+                reward or 0.,
+                state1,
+            ])
 
-            self.replay.pop(0)
+            if len(self.memory) > 100000:
+                for _ in range(100):
+                    indices = np.random.randint(
+                        len(self.memory), size=500
+                    )
 
-            minibatch = random.sample(self.replay, batch_size)
+                    (
+                        state0s_batch,
+                        actions_batch,
+                        rewards_batch,
+                        state1s_batch,
+                    ) = zip(*[self.memory[i] for i in indices])
 
-            X_train = {1: [], 2: []}
-            y_train = {1: [], 2: []}
+                    state0s_batch = np.array(
+                        state0s_batch, dtype=theano.config.floatX
+                    )
+                    actions_batch = np.array(
+                        actions_batch, dtype="int8"
+                    )
+                    rewards_batch = np.array(
+                        rewards_batch, dtype=theano.config.floatX
+                    )
+                    state1s_batch = np.array(
+                        state1s_batch, dtype=theano.config.floatX
+                    )
+                    self.error_num += self.trainer.train(
+                        state0s_batch,
+                        actions_batch,
+                        rewards_batch,
+                        state1s_batch,
+                        0.9,
+                    )
+                    self.error_den += 1
 
-            for side0, old_state0, action0, reward0, new_state0 in minibatch:
-                model0 = self.models[side0]
-                old_qval = model0.predict(old_state0, batch_size=1)
+                print "nn error:", self.error_num / self.error_den
+                self.error_num = 0.
+                self.error_den = 0
 
-                # This function observes the reward after the move chosen
-                y = np.zeros((1, ncols))
-                y[:] = old_qval[:]
+                self.memory = self.memory[1:]
 
-                if new_state0 is None:
-                    # Terminal state
-                    update = reward0
-                else:
-                    # Non-terminal state
+                if self.epochs > 100:
+                    self.epochs = 0
+                    print "Saving snapshots"
+                    cPickle.dump(self.memory, file("memory.pickle", "w"))
+                    save_network(self.network)
 
-                    # Get max_Q(S',a)
-                    newQ = model0.predict(new_state0, batch_size=1)
-                    qval_allowed = np.empty(newQ.shape)
-                    qval_allowed[:] = np.NAN
-                    valids = list(valid_columns(old_state0))
-                    for i in valids:
-                        qval_allowed[0, i] = newQ[0, i]
-                    maxQ = np.nanmax(qval_allowed)
-
-                    update = (reward0 + (gamma * maxQ))
-
-                y[0][action0] = update  # target output
-                X_train[side0].append(old_state0.reshape(state_dim*3,))
-                y_train[side0].append(y.reshape(ncols,))
-
-            for side0 in [1, 2]:
-                model0 = self.models[side0]
-                X_train0 = np.array(X_train[side0])
-                y_train0 = np.array(y_train[side0])
-                model0.train_on_batch(X_train0, y_train0)
-
-            self.epoch += 1
-            if self.epoch % self.save_interval == 0:
-                for side0 in [1, 2]:
-                    (self
-                     .models[side0]
-                     .save_weights(
-                         "model_{side}.dat"
-                         .format(side=side0),
-                         overwrite=True
-                     ))
-        return action, observe_reward
+        return action, observer

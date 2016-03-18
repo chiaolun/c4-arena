@@ -17,6 +17,8 @@ parser.add_argument('--against',
                     '(random/aima/<id of other player>)')
 parser.add_argument('--nopause', action="store_true",
                     help='Do not pause between games')
+parser.add_argument('--verbose', action="store_true",
+                    help='More printing for interactive use')
 
 args = parser.parse_args()
 
@@ -29,7 +31,8 @@ def start_game():
         "id": args.name,
         "against": args.against
     }))
-    print "Waiting for game to start"
+    if args.verbose:
+        print "Waiting for game to start"
 
 ncols = 7
 nrows = 6
@@ -48,13 +51,13 @@ def print_board(board):
 
 # Basic Engines
 class Manual():
-    def get_move(self, state, side):
+    def get_move(self, state, moves, side):
         print "It's your turn, pick a column"
         return int(raw_input()), None
 
 
 class Random():
-    def get_move(self, state, side):
+    def get_move(self, state, moves, side):
         import random
         return random.randint(0, ncols - 1), None
 
@@ -66,7 +69,7 @@ elif engine_name == "random":
     engine = Random()
 elif engine_name == "neuralq":
     from neuralq import NeuralQ
-    engine = NeuralQ(epsilon=0.01, gamma=0.99)
+    engine = NeuralQ()
 else:
     print "Unknown mode:", sys.argv[1]
     sys.exit(1)
@@ -85,7 +88,8 @@ while 1:
     }.get(msg_type, None))
 
     if byebye:
-        print byebye
+        if args.verbose:
+            print byebye
         if not args.nopause:
             print "Press Enter to start another round"
             raw_input()
@@ -101,16 +105,17 @@ while 1:
     if msg_type == "state":
         you = msg["you"]
         turn = msg["turn"]
-        print "Your side:", you
-        print "Board:"
-        print_board(msg["state"])
+        if args.verbose:
+            print "Your side:", you
+            print "Board:"
+            print_board(msg["state"])
         winner = msg.get("winner", None)
 
         # Do learning bookkeeping
         reward = 0
         if observer and (turn == you or winner is not None):
             if winner is None:
-                observer(reward=0, new_state=msg["state"])
+                observer(moves=msg["moves"])
             else:
                 if winner == 0:
                     reward = 0
@@ -118,25 +123,26 @@ while 1:
                     reward = 1
                 else:
                     reward = -1
-                observer(reward=reward, new_state=None)
+                observer(reward=reward)
             observer = None
 
         if winner is not None:
             ngames += 1
             if winner == you:
                 nwins += 1
-            print "You have", ("won!" if winner == you else "lost!")
+            if args.verbose:
+                print "You have", ("won!" if winner == you else "lost!")
             print "Win ratio: {0}/{1} {2:3d}%".format(
                 nwins, ngames, int(round(nwins*100./ngames))
             )
-            if ngames > 500:
+            if ngames >= 20:
                 print "Resetting win counter"
                 nwins = 0
                 ngames = 0
             continue
 
         if turn == you:
-            move, observer = engine.get_move(msg["state"], you)
+            move, observer = engine.get_move(msg["state"], msg["moves"], you)
             ws.send(json.dumps({"type": "move", "move": move}))
-        else:
+        elif args.verbose:
             print "Waiting for other player to play"

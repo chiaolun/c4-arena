@@ -1,0 +1,3 @@
+[submodule "clients/c4-neural"]
+	path = clients/c4_neural
+	url = git@github.com:chiaolun/c4-neural.git
