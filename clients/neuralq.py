@@ -12,6 +12,7 @@ import numpy as np
 import theano
 import random
 import cPickle
+import time
 
 ncols = 7
 nrows = 6
@@ -41,7 +42,7 @@ class NeuralQ():
         self.network = network
         self.trainer = network_trainer(network)
         self.ms2m = moves_to_move
-        self.epochs = 0
+        self.last_save = time.time()
         self.memory = []
         self.error_num = 0.
         self.error_den = 0
@@ -51,7 +52,6 @@ class NeuralQ():
             pass
 
     def get_move(self, state, moves, side):
-        self.epochs += 1
         if random.random() < self.epsilon:
             action = random.choice(list(valid_columns(state)))
         else:
@@ -73,7 +73,7 @@ class NeuralQ():
             ])
 
             if len(self.memory) > 100000:
-                for _ in range(1):
+                for _ in range(100):
                     indices = np.random.randint(
                         len(self.memory), size=500
                     )
@@ -106,16 +106,16 @@ class NeuralQ():
                     )
                     self.error_den += 1
 
+                    if time.time() - self.last_save > 300:
+                        self.last_save = time.time()
+                        print "Saving snapshots"
+                        cPickle.dump(self.memory, file("memory.pickle", "w"))
+                        save_network(self.network)
+
                 print "nn error:", self.error_num / self.error_den
                 self.error_num = 0.
                 self.error_den = 0
 
-                self.memory = self.memory[1:]
-
-                if self.epochs > 100:
-                    self.epochs = 0
-                    print "Saving snapshots"
-                    cPickle.dump(self.memory, file("memory.pickle", "w"))
-                    save_network(self.network)
+                self.memory = self.memory[:100000]
 
         return action, observer
