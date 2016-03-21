@@ -48,6 +48,7 @@
         turn (atom 0)
         winner (atom nil)
         moves (atom [])
+        disconnect (atom false)
         process-move (fn [move]
                        ;; This function enforces the rules of
                        ;; connect-4. If a move is not valid, returns
@@ -102,7 +103,8 @@
                        :when (not= ch-out ch-out0)]
                  (notify ch-out0 i)
                  (put! ch-out0 {:type "disconnected"})
-                 (initial-loop player0)))
+                 (initial-loop player0))
+               (reset! disconnect true))
              (when (= type "state_request")
                (notify ch-out actor))
              (when-let [reason (cond
@@ -120,7 +122,7 @@
                  (notify observer))
                (dotimes [i 2]
                  (notify (ch-outs i) i))))
-            (if-not @winner
+            (if-not (or @winner @disconnect)
               (recur)
               ;; Cleanup because someone won
               (doseq [{ch-out0 :ch-out :as player0} players]
