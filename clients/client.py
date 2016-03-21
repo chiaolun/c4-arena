@@ -4,6 +4,7 @@ import websocket
 import json
 import sys
 import argparse
+from engine import Engine
 
 server = "ws://localhost:8001"
 
@@ -50,16 +51,17 @@ def print_board(board):
 
 
 # Basic Engines
-class Manual():
+
+class Manual(Engine):
     def get_move(self, state, moves, side):
         print "It's your turn, pick a column"
-        return int(raw_input()), None
+        return int(raw_input())
 
 
-class Random():
+class Random(Engine):
     def get_move(self, state, moves, side):
         import random
-        return random.randint(0, ncols - 1), None
+        return random.randint(0, ncols - 1)
 
 # Instantiate engine
 engine_name = args.engine
@@ -69,7 +71,7 @@ elif engine_name == "random":
     engine = Random()
 elif engine_name == "neuralq":
     from neuralq import NeuralQ
-    engine = NeuralQ()
+    engine = NeuralQ(no_learn=False)
 else:
     print "Unknown mode:", sys.argv[1]
     sys.exit(1)
@@ -77,7 +79,6 @@ print engine_name, "engine chosen"
 
 ngames = 0
 nwins = 0
-observer = None
 start_game()
 while 1:
     msg = json.loads(ws.recv())
@@ -93,7 +94,6 @@ while 1:
         if not args.nopause:
             print "Press Enter to start another round"
             raw_input()
-        observer = None
         start_game()
         continue
 
@@ -111,22 +111,10 @@ while 1:
             print_board(msg["state"])
         winner = msg.get("winner", None)
 
-        # Do learning bookkeeping
-        reward = 0
-        if observer and (turn == you or winner is not None):
-            if winner is None:
-                observer(moves=msg["moves"])
-            else:
-                if winner == 0:
-                    reward = 0
-                elif winner == you:
-                    reward = 1
-                else:
-                    reward = -1
-                observer(reward=reward)
-            observer = None
-
+        # Do learning bookkeeping for end_game
         if winner is not None:
+            engine.end_game(msg["state"], msg["moves"], you, winner)
+
             ngames += 1
             if winner == you:
                 nwins += 1
@@ -135,14 +123,14 @@ while 1:
             print "Win ratio: {0}/{1} {2:3d}%".format(
                 nwins, ngames, int(round(nwins*100./ngames))
             )
-            if ngames >= 20:
+            if ngames >= 100:
                 print "Resetting win counter"
                 nwins = 0
                 ngames = 0
             continue
 
         if turn == you:
-            move, observer = engine.get_move(msg["state"], msg["moves"], you)
+            move = engine.get_move(msg["state"], msg["moves"], you)
             ws.send(json.dumps({"type": "move", "move": move}))
         elif args.verbose:
             print "Waiting for other player to play"
