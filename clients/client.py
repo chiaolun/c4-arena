@@ -77,8 +77,7 @@ else:
     sys.exit(1)
 print engine_name, "engine chosen"
 
-ngames = 0
-nwins = 0
+games = []
 start_game()
 while 1:
     msg = json.loads(ws.recv())
@@ -115,18 +114,15 @@ while 1:
         if winner is not None:
             engine.end_game(msg["state"], msg["moves"], you, winner)
 
-            ngames += 1
-            if winner == you:
-                nwins += 1
+            games.append(1 if winner == you else 0)
+            games = games[-100:]
             if args.verbose:
                 print "You have", ("won!" if winner == you else "lost!")
+            nwins = len([1 for game0 in games if game0 == 1])
+            ngames = len(games)
             print "Win ratio: {0}/{1} {2:3d}%".format(
-                nwins, ngames, int(round(nwins*100./ngames))
+                nwins, ngames, int(round(nwins * 100. / ngames))
             )
-            if ngames >= 100:
-                print "Resetting win counter"
-                nwins = 0
-                ngames = 0
             continue
 
         if turn == you:
