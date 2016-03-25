@@ -128,7 +128,7 @@
     "aima"
     (spawn-aima-player 1.)
     "aimafast"
-    (spawn-aima-player 0.05)
+    (spawn-aima-player 0.01)
     "aima10"
     (spawn-aima-player 10.)
     "perfect"
