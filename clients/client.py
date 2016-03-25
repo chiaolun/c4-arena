@@ -20,6 +20,8 @@ parser.add_argument('--nopause', action="store_true",
                     help='Do not pause between games')
 parser.add_argument('--verbose', action="store_true",
                     help='More printing for interactive use')
+parser.add_argument('--nolearn', action="store_true",
+                    help='More printing for interactive use')
 
 args = parser.parse_args()
 
@@ -71,7 +73,7 @@ elif engine_name == "random":
     engine = Random()
 elif engine_name == "neuralq":
     from neuralq import NeuralQ
-    engine = NeuralQ(no_learn=False)
+    engine = NeuralQ(no_learn=args.nolearn)
 else:
     print "Unknown mode:", sys.argv[1]
     sys.exit(1)
