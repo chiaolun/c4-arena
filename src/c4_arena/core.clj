@@ -220,7 +220,7 @@
                      "Only start messages allowed in current state"
                      (string/blank? id)
                      "You need to include an id"
-                     (#{"random" "aima" "aima10" "perfect"} id)
+                     (get-player id)
                      (format "\"%s\" is a reserved id used for a reference player" id))]
         (if-not reason
           (>! @matcher (assoc player :id id :against against))

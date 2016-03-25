@@ -127,6 +127,8 @@
     (spawn-random-player)
     "aima"
     (spawn-aima-player 1.)
+    "aimafast"
+    (spawn-aima-player 0.05)
     "aima10"
     (spawn-aima-player 10.)
     "perfect"
