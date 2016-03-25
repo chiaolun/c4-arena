@@ -75,7 +75,8 @@ class NeuralQ(Engine):
     def end_game(self, state, moves, side, winner):
         reward = {0: 0, 1: 1, 2: -1}[winner]
 
-        self.learner(self.state0, reward=reward)
+        if not self.no_learn:
+            self.learner(self.state0, reward=reward)
 
     def learner(self, state0, state1=None, reward=0.):
         if state0 is None:
