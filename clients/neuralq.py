@@ -59,7 +59,7 @@ class NeuralQ(Engine):
 
     def get_move(self, state, moves, side):
         self.epochs += 1
-        self.mepsilon = max(0.01, 0.5 + self.epochs / 1e5)
+        self.mepsilon = min(0.99, 0.5 + self.epochs / 1e5)
         if random.random() > self.mepsilon:
             action = random.choice(list(valid_columns(state)))
         else:
