@@ -43,14 +43,15 @@ class NeuralQ(Engine):
         self.state0 = None
         self.error_num = 0.
         self.error_den = 0
-        if not self.no_learn:
-            try:
-                (
-                    self.epochs,
-                    self.memory
-                ) = cPickle.load(file("neuralq.pickle"))
-            except IOError:
-                pass
+        try:
+            (
+                self.epochs,
+                self.memory
+            ) = cPickle.load(file("neuralq.pickle"))
+        except IOError:
+            pass
+        if self.no_learn:
+            self.epochs = 0
 
     def load_network(self):
         network = load_network()
