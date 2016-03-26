@@ -30,7 +30,29 @@ def valid_columns(state):
 
 
 class NeuralQ(Engine):
-    def __init__(self, no_learn=False):
+    def __init__(self, no_learn=False, foil=False):
+        self.load_network()
+        self.no_learn = no_learn
+        self.foil = False
+        if foil:
+            self.foil = True
+            self.no_learn = True
+        self.epochs = 0
+        self.last_save = time.time()
+        self.memory = []
+        self.state0 = None
+        self.error_num = 0.
+        self.error_den = 0
+        if not self.no_learn:
+            try:
+                (
+                    self.epochs,
+                    self.memory
+                ) = cPickle.load(file("neuralq.pickle"))
+            except IOError:
+                pass
+
+    def load_network(self):
         network = load_network()
         Q_fn = compile_Q(network)
 
@@ -39,27 +61,15 @@ class NeuralQ(Engine):
             Qs = Q_fn(np.array([state0]))[0]
             return np.nanargmax(Qs)
         self.ms2m = moves_to_move
-
-        self.no_learn = no_learn
         self.network = network
         self.trainer = network_trainer(network)
-        self.epochs = 0
-        self.last_save = time.time()
-        self.memory = []
-        self.state0 = None
-        self.error_num = 0.
-        self.error_den = 0
-        try:
-            (
-                self.epochs,
-                self.memory
-            ) = cPickle.load(file("neuralq.pickle"))
-        except IOError:
-            pass
 
     def get_move(self, state, moves, side):
         self.epochs += 1
         self.mepsilon = min(0.99, 0.5 + self.epochs / 1e5)
+        if self.foil and self.epochs % 1000 == 0:
+            print "Reloading network"
+            self.load_network()
         if random.random() > self.mepsilon:
             action = random.choice(list(valid_columns(state)))
         else:

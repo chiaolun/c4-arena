@@ -21,7 +21,9 @@ parser.add_argument('--nopause', action="store_true",
 parser.add_argument('--verbose', action="store_true",
                     help='More printing for interactive use')
 parser.add_argument('--nolearn', action="store_true",
-                    help='More printing for interactive use')
+                    help='No learning')
+parser.add_argument('--foil', action="store_true",
+                    help='Foil mode, reloads neural net now and then')
 
 args = parser.parse_args()
 
@@ -73,9 +75,9 @@ elif engine_name == "random":
     engine = Random()
 elif engine_name == "neuralq":
     from neuralq import NeuralQ
-    engine = NeuralQ(no_learn=args.nolearn)
+    engine = NeuralQ(no_learn=args.nolearn, foil=args.foil)
 else:
-    print "Unknown mode:", sys.argv[1]
+    print "Unknown engine:", args.engine
     sys.exit(1)
 print engine_name, "engine chosen"
 
