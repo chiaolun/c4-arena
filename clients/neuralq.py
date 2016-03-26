@@ -67,7 +67,10 @@ class NeuralQ(Engine):
 
     def get_move(self, state, moves, side):
         self.epochs += 1
-        self.mepsilon = min(0.99, 0.5 + self.epochs / 1e5)
+        if self.no_learn:
+            self.mepsilon = 1.
+        else:
+            self.mepsilon = min(0.99, 0.5 + self.epochs / 1e5)
         if self.foil and self.epochs % 1000 == 0:
             print "Reloading network"
             self.load_network()
