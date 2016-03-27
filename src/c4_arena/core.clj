@@ -256,6 +256,7 @@
     observer))
 
 (comment
+  "Random vs Random"
   (->> (range 1000000)
        (pmap (fn [i]
                (let [{:keys [winner moves]} (async/<!! (game-record ["random" "random"]))]
@@ -263,7 +264,16 @@
                    (println i))
                  (apply str winner moves))))
        (string/join "\n")
-       (spit "RvR.txt")))
+       (spit "RvR.txt"))
+  "AIMAfast vs AIMAfast"
+  (->> (range 1000000)
+       (pmap (fn [i]
+               (let [{:keys [winner moves]} (async/<!! (game-record ["aimafast" "aimafast"]))]
+                 (when (= 0 (mod i 1000))
+                   (println i))
+                 (apply str winner moves))))
+       (string/join "\n")
+       (spit "AIMAvAIMA.txt")))
 
 (comment
   (tp/profile
